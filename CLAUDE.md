@@ -51,6 +51,7 @@ memberflow/
 | Frontend | Vue.js 3 (Composition API) + Vite |
 | Frontend state | Pinia |
 | HTTP client | Axios |
+| Styling | Bulma v1.x + SCSS |
 | Containerisation | Docker + Docker Compose |
 | CI/CD | GitHub Actions |
 | Hosting | DigitalOcean (Managed PostgreSQL, Managed Redis, Spaces CDN) |
@@ -271,6 +272,35 @@ Four guard levels, checked in order:
 3. `requiresPlatformAdmin` — must have platform_admin role
 4. `feature` — feature flag must be enabled for this tenant
 
+### Styling (Bulma v1.x + SCSS)
+
+MemberFlow uses Bulma v1.x. Bulma v1.x is built on CSS custom properties — this is the mechanism for per-tenant runtime theming without a per-tenant build.
+
+**Per-tenant colours are applied at runtime, not at build time.**
+
+During tenant bootstrap, `OrganizationConfig.branding` values are written to CSS custom properties on `document.documentElement`:
+
+```js
+// stores/tenant.js — called during bootstrap()
+function applyBranding(branding) {
+  const root = document.documentElement
+  if (branding.primary_color) root.style.setProperty('--bulma-primary', branding.primary_color)
+  if (branding.secondary_color) root.style.setProperty('--bulma-secondary', branding.secondary_color)
+}
+```
+
+Bulma reads these properties for all component colours. One static build serves every tenant.
+
+**Rules:**
+- Use Bulma utility classes first: `is-primary`, `is-danger`, `has-text-weight-bold`, etc.
+- For custom components, reference CSS custom properties (`var(--bulma-primary)`) — never hardcode hex colours
+- SCSS (`_variables.scss`) is for structural/layout values only — not for brand colours
+- Never add `!important` overrides to Bulma styles; override via CSS custom properties instead
+
+**File responsibilities:**
+- `src/styles/main.scss` — imports Bulma, sets default CSS variable fallbacks (used before tenant bootstrap)
+- `src/styles/_variables.scss` — SCSS variables for custom component sizing/spacing only
+
 ---
 
 ## Testing
@@ -433,6 +463,7 @@ Run this when: a significant feature ships, the architecture changes, or the doc
 - Update `about/ARCHITECTURE.md` when making structural changes to the system
 - Check that Stripe API calls include `stripe_account=org.config.stripe_account_id`
 - Scope email subjects and content to the organisation (`org.name`)
+- Use Bulma utility classes for styling; reference `var(--bulma-primary)` etc. for tenant-branded colours
 
 ## What I Should Never Do
 
@@ -448,6 +479,8 @@ Run this when: a significant feature ships, the architecture changes, or the doc
 - Bundle all E2E tests at the end of a PRD
 - Write L or XL effort work items in a PRD
 - Commit secrets, stripe keys, or `.env` files
+- Hardcode hex colour values in components — use Bulma classes or `var(--bulma-*)` properties
+- Create per-tenant CSS builds or per-tenant stylesheets
 
 ---
 
@@ -495,5 +528,7 @@ npm run fix      # auto-fix lint issues
 | `apps/webhooks/views.py` | Stripe webhook receiver — per-tenant sig validation |
 | `tasks/webhooks.py` | Stripe event processing tasks |
 | `frontend/src/api/client.js` | Axios instance with JWT + refresh interceptors |
-| `frontend/src/stores/tenant.js` | Tenant config + feature flags |
+| `frontend/src/stores/tenant.js` | Tenant config + feature flags + branding application |
 | `frontend/src/main.js` | Tenant bootstrap before app mount |
+| `frontend/src/styles/main.scss` | Bulma import + default CSS custom property fallbacks |
+| `frontend/src/styles/_variables.scss` | SCSS variables for custom component layout/spacing |

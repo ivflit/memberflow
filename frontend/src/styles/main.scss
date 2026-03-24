@@ -1,0 +1,10 @@
+@use 'variables';
+@use 'bulma/bulma';
+
+// Default brand colours — overridden at runtime per tenant via CSS custom properties.
+// See stores/tenant.js applyBranding() for how OrganizationConfig.branding values
+// are applied to document.documentElement on bootstrap.
+:root {
+  --bulma-primary: #3273dc;
+  --bulma-secondary: #23d160;
+}

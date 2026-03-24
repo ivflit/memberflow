@@ -1,0 +1,61 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    entrypoint: ["sh", "/app/entrypoint.sh"]
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - SECRET_KEY=dev-insecure-key-change-in-prod
+      - DB_HOST=db
+      - POSTGRES_DB=memberflow
+      - POSTGRES_USER=memberflow
+      - POSTGRES_PASSWORD=memberflow
+    depends_on:
+      - db
+      - redis
+    networks:
+      - internal
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=memberflow
+      - POSTGRES_USER=memberflow
+      - POSTGRES_PASSWORD=memberflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_TARGET=http://api:8000
+      - VITE_TENANT_SLUG=test-club
+    depends_on:
+      - api
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+
+networks:
+  internal:
+    driver: bridge

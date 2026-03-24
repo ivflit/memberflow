@@ -214,6 +214,7 @@ Every view that accesses tenant data uses this mixin — failure to do so result
 | HTTP Client | Axios |
 | State | Pinia |
 | Build Tool | Vite |
+| Styling | Bulma v1.x + SCSS |
 | Hosting | DigitalOcean Spaces (static) or Nginx |
 
 ### Directory Structure
@@ -241,9 +242,12 @@ frontend/
 │   │   ├── auth.js            # User identity + role
 │   │   ├── tenant.js          # OrganizationConfig, feature flags, branding
 │   │   └── membership.js      # Current user's membership state
+│   ├── styles/
+│   │   ├── main.scss          # Imports Bulma; sets default CSS variable overrides
+│   │   └── _variables.scss    # SCSS variables for custom component styles
 │   ├── router/
 │   │   └── index.js
-│   └── main.js
+│   └── main.js                # Imports main.scss; applies tenant CSS vars on bootstrap
 ├── public/
 └── vite.config.js
 ```
@@ -314,6 +318,56 @@ router.beforeEach((to, from, next) => {
   next()
 })
 ```
+
+### Per-Tenant Runtime Theming
+
+MemberFlow uses **Bulma v1.x + SCSS** for styling. Bulma v1.x is built entirely on CSS custom properties, which makes per-tenant colour theming possible at runtime — there is no per-tenant build step and no per-tenant stylesheet. A single compiled CSS bundle serves all tenants.
+
+**How it works:**
+
+1. `OrganizationConfig.branding` stores tenant colours as a JSONField:
+   ```json
+   { "primary_color": "#1a472a", "secondary_color": "#f4d03f", "logo_url": "https://..." }
+   ```
+
+2. During tenant bootstrap (`main.js`, before app mount), the branding values are applied to the document root as CSS custom properties:
+   ```js
+   // stores/tenant.js — called during bootstrap()
+   function applyBranding(branding) {
+     const root = document.documentElement
+     if (branding.primary_color) {
+       root.style.setProperty('--bulma-primary', branding.primary_color)
+     }
+     if (branding.secondary_color) {
+       root.style.setProperty('--bulma-secondary', branding.secondary_color)
+     }
+   }
+   ```
+
+3. Bulma v1.x reads `--bulma-primary`, `--bulma-secondary`, etc. for all component colours. Overriding these properties at the root level is all that is required — no SCSS recompilation.
+
+**SCSS usage:**
+
+`src/styles/_variables.scss` contains SCSS variables used for custom component styles that go beyond Bulma's built-in components. These are compiled at build time and should not contain hardcoded tenant colours. Tenant-specific values always come through CSS custom properties at runtime.
+
+`src/styles/main.scss` imports Bulma and sets sensible default CSS variable values (used when no tenant branding is applied, e.g. in development with no config endpoint):
+
+```scss
+// src/styles/main.scss
+@use 'bulma/bulma';
+@use 'variables';
+
+// Default brand values — overridden at runtime per tenant
+:root {
+  --bulma-primary: #3273dc;
+  --bulma-secondary: #23d160;
+}
+```
+
+**Rules:**
+- Never hardcode brand colours in component `<style>` blocks — always use Bulma utility classes or `var(--bulma-*)` properties
+- Custom components that need tenant colours reference CSS custom properties, not SCSS variables
+- One static build serves all tenants; per-tenant builds are explicitly out of scope
 
 ---
 

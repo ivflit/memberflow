@@ -1,0 +1,6 @@
+// SCSS variables for custom component layout and spacing.
+// Do NOT put brand colours here — tenant colours are CSS custom properties applied
+// at runtime. See main.scss and stores/tenant.js.
+
+$border-radius-default: 6px;
+$card-padding: 1.5rem;
