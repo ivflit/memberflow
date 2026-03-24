@@ -178,7 +178,25 @@ Every view that accesses tenant data uses this mixin — failure to do so result
 - `User` model: scoped to an `Organization` via `TenantAwareModel`
 - Email uniqueness is enforced **per organisation**, not globally (same person can be a member of two clubs)
 - `UserOrganizationRole` model: replaces a flat role field; one user can have different roles in different orgs
-- Registration, login, and token endpoints; JWT payload includes `organization_id`
+- `UserInvitation` model: time-limited (7-day) invite token; scoped to org; tracks `invited_by`, `is_used`, `expires_at`
+- `PasswordResetToken` model: single-use 24-hour reset token; linked to `User` (not tenant-scoped directly — User FK provides org link)
+- `BlacklistedRefreshToken` model: lightweight custom blacklist keyed by JWT JTI (avoids dependency on simplejwt's `OutstandingToken` which requires Django's `auth.User`)
+- Registration, login, invite, and password reset endpoints; JWT payload includes `organization_id` and `role`
+
+**JWT token issuance pattern (`apps/users/tokens.py`):**
+```python
+# Our User model is not Django's auth.User, so we cannot use simplejwt's for_user().
+# Tokens are built manually to include org/role claims:
+def make_tokens_for_user(user):
+    refresh = RefreshToken()
+    refresh[USER_ID_CLAIM] = str(user.pk)
+    refresh['organization_id'] = str(user.organization_id)
+    refresh['role'] = role  # from UserOrganizationRole
+    access = refresh.access_token
+    # access token inherits the same claims
+    return access, refresh
+```
+Token payload: `{ user_id, organization_id, role, exp, jti }`
 
 **`memberships`**
 - `MembershipTier`: per-organisation tier catalogue
@@ -223,7 +241,7 @@ Every view that accesses tenant data uses this mixin — failure to do so result
 frontend/
 ├── src/
 │   ├── api/
-│   │   ├── client.js          # Axios instance; reads tenant from subdomain
+│   │   ├── client.js          # Axios instance; JWT attachment + silent refresh interceptor
 │   │   ├── auth.js
 │   │   ├── config.js          # Fetches OrganizationConfig on boot
 │   │   ├── memberships.js
@@ -233,21 +251,28 @@ frontend/
 │   │   ├── StatusBadge.vue
 │   │   └── PaymentHistory.vue
 │   ├── views/
-│   │   ├── LoginView.vue
-│   │   ├── DashboardView.vue
+│   │   ├── LoginView.vue          # /login — email/password; inline error; Forgot password link
+│   │   ├── RegisterView.vue       # /register — gated by allow_self_registration
+│   │   ├── ForgotPasswordView.vue # /forgot-password — no-enumeration confirmation
+│   │   ├── SetPasswordView.vue    # /auth/set-password?token=&mode=invite|reset
+│   │   ├── DashboardView.vue      # /dashboard — protected; placeholder
 │   │   ├── MembershipView.vue
 │   │   ├── OrgAdminView.vue
 │   │   └── PlatformAdminView.vue
 │   ├── stores/
-│   │   ├── auth.js            # User identity + role
+│   │   ├── auth.js            # Access token (memory), user, isAuthenticated, isOrgAdmin
 │   │   ├── tenant.js          # OrganizationConfig, feature flags, branding
 │   │   └── membership.js      # Current user's membership state
 │   ├── styles/
 │   │   ├── main.scss          # Imports Bulma; sets default CSS variable overrides
 │   │   └── _variables.scss    # SCSS variables for custom component styles
 │   ├── router/
-│   │   └── index.js
+│   │   └── index.js           # Auth routes + beforeEach guard + ?next= redirect
 │   └── main.js                # Imports main.scss; applies tenant CSS vars on bootstrap
+├── tests/
+│   └── unit/
+│       └── api/
+│           └── client.test.js # Vitest: interceptor silent refresh + force-logout paths
 ├── public/
 └── vite.config.js
 ```
@@ -298,10 +323,28 @@ Feature flags gate entire routes and components:
 
 1. User submits credentials at `springfield-cc.memberflow.com/login`
 2. Backend returns `access` + `refresh` JWT tokens; the `access` token payload contains `organization_id` and `role`
-3. `access` token stored in Pinia (memory only); `refresh` token in `localStorage`
+3. `access` token stored in Pinia `auth` store (memory only — never persisted); `refresh` token in `localStorage('mf_refresh_token')`
 4. Axios request interceptor attaches `Authorization: Bearer <access>` on every request
-5. On 401, interceptor calls `/auth/token/refresh/`, rotates tokens, retries the original request
-6. Role from the JWT payload (`member`, `org_admin`, `platform_admin`) drives route guards and UI visibility
+5. On 401, interceptor calls `POST /api/v1/auth/token/refresh/`, rotates tokens via `authStore.setTokens()`, retries the original request exactly once
+6. If refresh also returns 401: clears auth store state, removes `mf_refresh_token` from localStorage, redirects to `/login`
+7. The refresh endpoint itself never triggers a second refresh attempt (infinite loop prevention)
+8. Role from the JWT payload (`member`, `org_staff`, `org_admin`, `platform_admin`) drives route guards and UI visibility
+
+**Token storage:**
+| Token | Storage | Lifetime |
+|---|---|---|
+| `access` | Pinia store (memory) | 15 minutes |
+| `refresh` | `localStorage('mf_refresh_token')` | 7 days |
+
+**Pinia `auth` store (`src/stores/auth.js`):**
+- `state.accessToken` — null until login
+- `state.user` — `{ id, email, first_name, last_name, role }`
+- `getters.isAuthenticated` — `!!accessToken`
+- `getters.isOrgAdmin` — role is `org_admin` or `org_staff`
+- `actions.login(email, password)` — calls API, stores tokens
+- `actions.register(payload)` — calls API, stores tokens
+- `actions.logout()` — calls API to blacklist refresh token, clears state
+- `actions.setTokens({ access, refresh, user })` — called by Axios interceptor on silent refresh
 
 ### Routing and Guards
 
@@ -407,6 +450,25 @@ UserOrganizationRole  (replaces flat role field on User)
 ├── role (member | org_staff | org_admin | platform_admin)
 │   Unique together: (user, organization)
 
+UserInvitation  (inherits TenantAwareModel)
+├── email
+├── token (UUID, unique)
+├── invited_by → User (FK, SET_NULL)
+├── is_used (default=False)
+├── expires_at (timezone.now() + 7 days on creation)
+
+PasswordResetToken
+├── id (UUID, PK)
+├── user → User (FK, CASCADE)
+├── token (UUID, unique)
+├── is_used (default=False)
+├── expires_at (timezone.now() + 24 hours on creation)
+├── created_at
+
+BlacklistedRefreshToken
+├── jti (unique string — JWT ID claim)
+├── blacklisted_at
+
 MembershipTier  (inherits TenantAwareModel)
 ├── id
 ├── organization → Organization (FK)
@@ -498,12 +560,16 @@ GET    /api/v1/config/                  Returns OrganizationConfig for the curre
 
 #### Authentication
 ```
-POST   /api/v1/auth/register/           Register within the current tenant (if self-registration enabled)
-POST   /api/v1/auth/login/              Obtain JWT tokens (scoped to current tenant)
-POST   /api/v1/auth/token/refresh/      Refresh access token
-POST   /api/v1/auth/logout/             Blacklist refresh token
-GET    /api/v1/auth/me/                 Current user profile + role within this org
-PATCH  /api/v1/auth/me/                 Update profile
+POST   /api/v1/auth/register/              Self-register within current tenant (gated by allow_self_registration)
+POST   /api/v1/auth/login/                 Obtain JWT tokens (tenant-scoped; same error for wrong email/password)
+POST   /api/v1/auth/token/refresh/         Rotate access + refresh tokens
+POST   /api/v1/auth/logout/                Blacklist refresh token (custom BlacklistedRefreshToken model)
+POST   /api/v1/auth/invite/                Org admin sends invitation email (org_admin or org_staff only)
+POST   /api/v1/auth/invite/accept/         Invitee completes registration via token (7-day, single-use)
+POST   /api/v1/auth/password/reset/        Request password reset email (no enumeration — always 200)
+POST   /api/v1/auth/password/reset/confirm/ Complete reset; auto-logs user in on success
+GET    /api/v1/auth/me/                    Current user profile + role within this org
+PATCH  /api/v1/auth/me/                    Update profile
 ```
 
 #### Memberships (authenticated member)

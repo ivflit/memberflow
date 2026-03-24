@@ -11,3 +11,15 @@ class Organization(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class OrganizationConfig(models.Model):
+    organization = models.OneToOneField(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name='config',
+    )
+    allow_self_registration = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f'Config for {self.organization}'
