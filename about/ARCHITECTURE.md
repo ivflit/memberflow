@@ -1,41 +1,57 @@
 # MemberFlow — Architecture
 
+Multi-tenancy is a first-class design constraint in MemberFlow. Every layer — data model, API, middleware, background tasks, Stripe integration, and deployment — is built around the assumption that the system serves multiple isolated clubs simultaneously from a single deployment.
+
+---
+
 ## 1. High-Level Architecture
 
-MemberFlow is a decoupled, API-first system. The backend exposes a REST API consumed by a Vue.js single-page application. Stripe handles all payment processing externally, communicating back via webhooks. Background tasks are offloaded to Celery workers backed by Redis.
+MemberFlow is a decoupled, API-first system. A Vue.js SPA is served per tenant via subdomain. All requests pass through a tenant resolution layer before reaching any business logic. The backend exposes a REST API where every response is scoped to the current tenant. Stripe Connect handles payments independently per club. Background tasks carry tenant context through Celery.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                          Client Browser                         │
-│                      Vue.js SPA (static)                        │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │ HTTPS / REST API (JWT)
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        Django REST API                          │
-│              (Gunicorn + Nginx, DigitalOcean Droplet)           │
-│                                                                 │
-│   ┌────────────┐  ┌─────────────┐  ┌──────────┐  ┌─────────┐  │
-│   │   users    │  │ memberships │  │ payments │  │  admin  │  │
-│   └────────────┘  └─────────────┘  └──────────┘  └─────────┘  │
-└──────────────┬─────────────────────────────┬────────────────────┘
-               │                             │
-        ┌──────▼──────┐              ┌───────▼───────┐
-        │  PostgreSQL │              │  Celery Worker│
-        │  (primary)  │              │  + Redis      │
-        └─────────────┘              └───────┬───────┘
-                                             │
-                                    ┌────────▼────────┐
-                                    │  Stripe API /   │
-                                    │  Webhooks       │
-                                    └─────────────────┘
+  springfield-cc.memberflow.com          barton-fc.memberflow.com
+         │                                        │
+         └──────────────┬─────────────────────────┘
+                        │ Wildcard DNS → Load Balancer
+                        ▼
+            ┌───────────────────────┐
+            │  Nginx (reverse proxy)│
+            │  Wildcard TLS cert    │
+            └───────────┬───────────┘
+                        │
+            ┌───────────▼───────────┐
+            │   TenantMiddleware    │  ← resolves Organization from subdomain
+            │   Django REST API     │     attaches request.tenant to all views
+            │                       │
+            │  ┌─────────────────┐  │
+            │  │  organizations  │  │
+            │  │  users          │  │
+            │  │  memberships    │  │
+            │  │  payments       │  │
+            │  │  admin_portal   │  │
+            │  │  webhooks       │  │
+            │  └─────────────────┘  │
+            └──────┬────────────────┘
+                   │
+      ┌────────────┼────────────────┐
+      ▼            ▼                ▼
+┌──────────┐ ┌──────────┐   ┌─────────────────┐
+│PostgreSQL│ │  Redis   │   │  Celery Workers │
+│(shared,  │ │ (broker) │   │  (tenant-aware) │
+│ row-level│ └──────────┘   └────────┬────────┘
+│ isolation│                         │
+└──────────┘              ┌──────────▼──────────┐
+                          │  Stripe Connect API  │
+                          │  (per-tenant account)│
+                          └─────────────────────┘
 ```
 
-**Key architectural principles:**
-- Frontend and backend are independently deployable
-- The backend is stateless at the API layer; all state lives in PostgreSQL
-- Stripe is the source of truth for payment status; webhook events drive membership state transitions
-- Celery workers are isolated from the API process, preventing background jobs from impacting request latency
+**Core architectural constraints:**
+- Every database query is filtered by `organization_id` — no query runs without a tenant in scope
+- `request.tenant` is set by middleware before any view executes; views never resolve the tenant themselves
+- Stripe Connect means each club's payments go into their own Stripe account; MemberFlow never commingles funds
+- Celery tasks receive `organization_id` as an explicit argument — they never infer tenant from global state
+- The frontend bootstraps tenant context on load by calling a public `/api/v1/config/` endpoint
 
 ---
 
@@ -48,7 +64,7 @@ MemberFlow is a decoupled, API-first system. The backend exposes a REST API cons
 | Framework | Django 4.x + Django REST Framework |
 | Database | PostgreSQL 15 |
 | Auth | djangorestframework-simplejwt |
-| Payments | Stripe Python SDK |
+| Payments | Stripe Python SDK + Stripe Connect |
 | Task Queue | Celery 5.x + Redis |
 | Web Server | Gunicorn behind Nginx |
 | Containerisation | Docker + Docker Compose |
@@ -57,7 +73,7 @@ MemberFlow is a decoupled, API-first system. The backend exposes a REST API cons
 
 ```
 memberflow/
-├── config/                    # Project-level settings and routing
+├── config/
 │   ├── settings/
 │   │   ├── base.py
 │   │   ├── development.py
@@ -65,50 +81,125 @@ memberflow/
 │   ├── urls.py
 │   └── wsgi.py
 ├── apps/
-│   ├── users/                 # Registration, auth, profiles
-│   ├── memberships/           # Tiers, membership records, status
-│   ├── payments/              # Stripe integration, payment records
-│   └── admin_portal/          # Admin-specific views and serializers
-├── core/                      # Shared utilities, base models, permissions
-├── tasks/                     # Celery task definitions
-├── webhooks/                  # Stripe webhook handler
+│   ├── organizations/         # Tenant model, config, feature flags
+│   ├── users/                 # Registration, auth, profiles (tenant-scoped)
+│   ├── memberships/           # Tiers, membership records, status (tenant-scoped)
+│   ├── payments/              # Stripe Connect integration, payment records
+│   ├── admin_portal/          # Org-admin and platform-admin views
+│   └── webhooks/              # Per-tenant Stripe webhook receiver
+├── core/
+│   ├── models.py              # TenantAwareModel base class
+│   ├── middleware.py          # TenantMiddleware
+│   ├── managers.py            # TenantManager base queryset
+│   ├── mixins.py              # TenantScopedViewMixin for DRF views
+│   └── permissions.py        # IsOrgAdmin, IsPlatformAdmin, IsOwnerOrOrgAdmin
+├── tasks/                     # Celery task definitions (all tenant-aware)
 └── manage.py
 ```
 
+### Tenant Resolution Middleware
+
+The `TenantMiddleware` runs before every request. It resolves the `Organization` from the subdomain and attaches it to the request. Any request that cannot be resolved to a known, active tenant is rejected before reaching any view.
+
+```python
+# core/middleware.py
+class TenantMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        host = request.get_host().split(':')[0]          # strip port
+        subdomain = host.split('.')[0]                   # "springfield-cc"
+
+        try:
+            request.tenant = Organization.objects.get(
+                slug=subdomain,
+                is_active=True
+            )
+        except Organization.DoesNotExist:
+            return JsonResponse({'error': 'Organisation not found'}, status=404)
+
+        return self.get_response(request)
+```
+
+### Tenant-Scoped Base Model and Manager
+
+All tenant-owned models inherit from `TenantAwareModel`. This enforces `organization` as a required FK and provides a scoped manager:
+
+```python
+# core/models.py
+class TenantAwareModel(models.Model):
+    organization = models.ForeignKey(
+        'organizations.Organization',
+        on_delete=models.CASCADE,
+        db_index=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = TenantManager()
+
+    class Meta:
+        abstract = True
+
+# core/managers.py
+class TenantManager(models.Manager):
+    def for_tenant(self, organization):
+        return self.get_queryset().filter(organization=organization)
+```
+
+### Tenant-Scoped View Mixin
+
+All DRF views that handle tenant data inherit from `TenantScopedViewMixin`. This is the enforcement point that prevents cross-tenant data access:
+
+```python
+# core/mixins.py
+class TenantScopedViewMixin:
+    """
+    Forces all queryset access to be filtered by request.tenant.
+    Must be the left-most parent in any view that touches tenant data.
+    """
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.for_tenant(self.request.tenant)
+```
+
+Every view that accesses tenant data uses this mixin — failure to do so results in a global queryset, which is caught in code review and test coverage.
+
 ### App Responsibilities
 
+**`organizations`**
+- `Organization` model: the tenant entity
+- `OrganizationConfig` model: per-tenant settings and feature flags
+- Endpoint: `GET /api/v1/config/` — public, returns the current tenant's config for frontend bootstrapping
+- Platform admin endpoints for creating and managing organisations
+
 **`users`**
-- Custom `User` model extending `AbstractBaseUser`
-- Registration, login, and token refresh endpoints
-- Profile management (name, contact details, club-specific fields)
-- Role assignment: `member`, `staff`, `admin`
+- `User` model: scoped to an `Organization` via `TenantAwareModel`
+- Email uniqueness is enforced **per organisation**, not globally (same person can be a member of two clubs)
+- `UserOrganizationRole` model: replaces a flat role field; one user can have different roles in different orgs
+- Registration, login, and token endpoints; JWT payload includes `organization_id`
 
 **`memberships`**
-- `MembershipTier` model: defines categories, pricing, and duration
-- `Membership` model: links a user to a tier with status and expiry tracking
-- Status enum: `pending`, `active`, `expired`, `cancelled`, `suspended`
-- Business logic for status transitions (activated on payment, expired on non-renewal)
+- `MembershipTier`: per-organisation tier catalogue
+- `Membership`: per-organisation membership instance for a user
+- All queries filtered through `TenantScopedViewMixin`
+- Status transitions (pending → active → expired/cancelled) are unchanged in logic, scoped by tenant
 
 **`payments`**
-- `Payment` model: records individual payment events (amount, status, Stripe IDs)
-- `Subscription` model: tracks recurring Stripe subscriptions per member
-- Stripe Checkout session creation
-- Stripe webhook signature validation and event routing
+- Stripe Connect: each `Organization` stores a `stripe_account_id` (their connected account)
+- Checkout sessions are created on behalf of the connected account
+- `Payment` and `Subscription` models inherit from `TenantAwareModel`
 
 **`admin_portal`**
-- Admin-only serializers and views with extended member data
-- Endpoints for manual membership adjustments
-- Aggregated reporting data (active count, revenue summary)
+- Org admin views: full member/payment management, scoped to their organisation
+- Platform admin views: cross-tenant read access for support (no data mutation across tenant boundaries)
+- Separated permission classes prevent org admins from accessing platform admin endpoints
 
 **`webhooks`**
-- Dedicated app for receiving and processing Stripe webhook events
-- Validates `Stripe-Signature` header on every inbound request
-- Routes events to appropriate handlers (payment success, failure, subscription cancelled, etc.)
-
-**`core`**
-- Abstract base model with `created_at`, `updated_at`
-- Custom permission classes (`IsAdmin`, `IsMember`, `IsOwnerOrAdmin`)
-- Shared exception handlers and response formatting
+- Per-tenant webhook endpoint: `POST /api/v1/webhooks/stripe/{org_slug}/`
+- Each organisation has its own `stripe_webhook_secret` stored on `OrganizationConfig`
+- The org slug in the URL path is used to resolve the tenant before signature validation
 
 ---
 
@@ -121,7 +212,7 @@ memberflow/
 | Framework | Vue.js 3 (Composition API) |
 | Routing | Vue Router 4 |
 | HTTP Client | Axios |
-| State | Pinia (lightweight store) |
+| State | Pinia |
 | Build Tool | Vite |
 | Hosting | DigitalOcean Spaces (static) or Nginx |
 
@@ -130,22 +221,26 @@ memberflow/
 ```
 frontend/
 ├── src/
-│   ├── api/                   # Axios service layer (one file per domain)
+│   ├── api/
+│   │   ├── client.js          # Axios instance; reads tenant from subdomain
 │   │   ├── auth.js
+│   │   ├── config.js          # Fetches OrganizationConfig on boot
 │   │   ├── memberships.js
 │   │   └── payments.js
-│   ├── components/            # Reusable UI components
+│   ├── components/
 │   │   ├── MemberCard.vue
 │   │   ├── StatusBadge.vue
 │   │   └── PaymentHistory.vue
-│   ├── views/                 # Route-level page components
+│   ├── views/
 │   │   ├── LoginView.vue
 │   │   ├── DashboardView.vue
 │   │   ├── MembershipView.vue
-│   │   └── AdminView.vue
-│   ├── stores/                # Pinia stores
-│   │   ├── auth.js
-│   │   └── membership.js
+│   │   ├── OrgAdminView.vue
+│   │   └── PlatformAdminView.vue
+│   ├── stores/
+│   │   ├── auth.js            # User identity + role
+│   │   ├── tenant.js          # OrganizationConfig, feature flags, branding
+│   │   └── membership.js      # Current user's membership state
 │   ├── router/
 │   │   └── index.js
 │   └── main.js
@@ -153,40 +248,70 @@ frontend/
 └── vite.config.js
 ```
 
-### API Layer
+### Tenant Bootstrap on App Load
 
-All HTTP communication is encapsulated in `src/api/`. Views and components do not call Axios directly. Each service module exports typed async functions:
+The frontend does not hardcode any tenant details. On `main.js` init, before mounting the app, it fetches the current tenant's config from the API. The backend resolves the tenant from the subdomain server-side; the frontend simply uses whatever subdomain it's running on.
 
 ```js
-// src/api/memberships.js
-export const getMembership = () => api.get('/memberships/me/')
-export const getMembershipTiers = () => api.get('/memberships/tiers/')
+// main.js
+const tenantStore = useTenantStore()
+await tenantStore.bootstrap()   // GET /api/v1/config/ — sets branding + feature flags
+app.mount('#app')
 ```
 
-A shared `api.js` module configures the Axios instance with the base URL and attaches the JWT access token via a request interceptor. A response interceptor handles 401 errors by attempting a token refresh before retrying.
+```js
+// stores/tenant.js
+export const useTenantStore = defineStore('tenant', {
+  state: () => ({ config: null }),
+  getters: {
+    isFeatureEnabled: (state) => (flag) => state.config?.features?.[flag] ?? false,
+    brandName: (state) => state.config?.name ?? 'MemberFlow',
+  },
+  actions: {
+    async bootstrap() {
+      const { data } = await api.get('/config/')
+      this.config = data
+    }
+  }
+})
+```
+
+Feature flags gate entire routes and components:
+
+```js
+// router/index.js — guard for a feature-flagged route
+{
+  path: '/waitlist',
+  component: WaitlistView,
+  beforeEnter: () => {
+    const tenant = useTenantStore()
+    if (!tenant.isFeatureEnabled('waitlist')) return '/dashboard'
+  }
+}
+```
 
 ### Authentication Flow (Frontend)
 
-1. User submits login credentials
-2. Backend returns `access` and `refresh` tokens
-3. `access` token stored in memory (Pinia store); `refresh` token stored in an `httpOnly`-equivalent session cookie or `localStorage` (tradeoff documented)
-4. Axios request interceptor attaches `Authorization: Bearer <access>` header
-5. On 401 response, the interceptor calls `/auth/token/refresh/`, updates the stored token, and retries
-6. On logout or refresh failure, store is cleared and user redirected to login
+1. User submits credentials at `springfield-cc.memberflow.com/login`
+2. Backend returns `access` + `refresh` JWT tokens; the `access` token payload contains `organization_id` and `role`
+3. `access` token stored in Pinia (memory only); `refresh` token in `localStorage`
+4. Axios request interceptor attaches `Authorization: Bearer <access>` on every request
+5. On 401, interceptor calls `/auth/token/refresh/`, rotates tokens, retries the original request
+6. Role from the JWT payload (`member`, `org_admin`, `platform_admin`) drives route guards and UI visibility
 
 ### Routing and Guards
 
-Vue Router is configured with navigation guards that check auth state before allowing access to protected routes:
-
 ```js
 router.beforeEach((to, from, next) => {
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
-  } else if (to.meta.requiresAdmin && !authStore.isAdmin) {
-    next('/dashboard')
-  } else {
-    next()
-  }
+  const auth = useAuthStore()
+  const tenant = useTenantStore()
+
+  if (to.meta.requiresAuth && !auth.isAuthenticated) return next('/login')
+  if (to.meta.requiresOrgAdmin && !auth.isOrgAdmin) return next('/dashboard')
+  if (to.meta.requiresPlatformAdmin && !auth.isPlatformAdmin) return next('/dashboard')
+  if (to.meta.feature && !tenant.isFeatureEnabled(to.meta.feature)) return next('/dashboard')
+
+  next()
 })
 ```
 
@@ -197,46 +322,74 @@ router.beforeEach((to, from, next) => {
 ### Core Entities
 
 ```
-User
+Organization  (the tenant)
 ├── id (UUID)
-├── email (unique)
-├── first_name, last_name
-├── role (member | staff | admin)
+├── name                           # "Springfield Cricket Club"
+├── slug (unique)                  # "springfield-cc" — used for subdomain routing
 ├── is_active
 ├── created_at
 
-MembershipTier
+OrganizationConfig  (OneToOne → Organization)
+├── stripe_account_id              # Stripe Connect connected account ID
+├── stripe_webhook_secret          # Per-tenant webhook signing secret
+├── default_currency               # "gbp", "aud", etc.
+├── allow_self_registration        # bool
+├── require_membership_approval    # bool
+├── reminder_days_before_expiry    # int (e.g. 7)
+├── features                       # JSONField: {"waitlist": true, "family_memberships": false}
+├── branding                       # JSONField: {"logo_url": "...", "primary_color": "#1a1a2e"}
+
+User  (inherits TenantAwareModel → scoped to Organization)
+├── id (UUID)
+├── organization → Organization (FK)
+├── email                          # unique per organization, not globally
+├── first_name, last_name
+├── is_active
+├── created_at
+
+UserOrganizationRole  (replaces flat role field on User)
+├── user → User (FK)
+├── organization → Organization (FK)
+├── role (member | org_staff | org_admin | platform_admin)
+│   Unique together: (user, organization)
+
+MembershipTier  (inherits TenantAwareModel)
 ├── id
-├── name (e.g. "Full Member", "Junior")
+├── organization → Organization (FK)
+├── name                           # "Full Member", "Junior", "Social"
 ├── price (Decimal)
 ├── billing_period (monthly | annual | one_time)
-├── stripe_price_id
+├── stripe_price_id                # Price ID on the connected Stripe account
 ├── is_active
 
-Membership
+Membership  (inherits TenantAwareModel)
 ├── id
-├── user → User (OneToOne)
-├── tier → MembershipTier (ForeignKey)
+├── organization → Organization (FK)
+├── user → User (FK)
+├── tier → MembershipTier (FK)
 ├── status (pending | active | expired | cancelled | suspended)
 ├── start_date
 ├── expiry_date
 ├── stripe_subscription_id (nullable)
 ├── created_at, updated_at
+│   Unique together: (organization, user) — one membership per user per org
 
-Subscription
+Subscription  (inherits TenantAwareModel)
 ├── id
-├── user → User (ForeignKey)
+├── organization → Organization (FK)
+├── user → User (FK)
 ├── stripe_subscription_id (unique)
 ├── stripe_customer_id
-├── status (mirrors Stripe: active | past_due | cancelled | etc.)
+├── status (active | past_due | cancelled | unpaid)
 ├── current_period_start
 ├── current_period_end
 ├── created_at, updated_at
 
-Payment
+Payment  (inherits TenantAwareModel — append-only)
 ├── id
-├── user → User (ForeignKey)
-├── membership → Membership (ForeignKey)
+├── organization → Organization (FK)
+├── user → User (FK)
+├── membership → Membership (FK)
 ├── stripe_payment_intent_id (unique)
 ├── amount (Decimal)
 ├── currency
@@ -245,12 +398,29 @@ Payment
 ├── created_at
 ```
 
-### Relationships
+### Key Relationships
 
-- A `User` has at most one active `Membership` at any time (OneToOne enforced at application level)
-- A `Membership` may be linked to a `Subscription` for recurring billing, or to a one-time `Payment`
-- `Payment` records are append-only; each billing cycle creates a new record
-- `MembershipTier` is the catalogue; `Membership` is the instance for a specific user
+- `User.email` is unique **per organisation** (`UniqueConstraint(fields=['organization', 'email'])`)
+- `Membership` is unique per `(organization, user)` — one active membership per user per club
+- `MembershipTier` is defined per organisation; there is no global tier catalogue
+- `OrganizationConfig` is OneToOne with `Organization` and always created alongside it
+- `UserOrganizationRole` replaces a flat role field — the same physical user account can have different roles across different organisations (future use case: a person who is an org admin of one club and a regular member of another)
+- All `Payment` records are append-only; mutations to payment state use status field updates only
+
+### Database Indexes
+
+```python
+# Applied at model level for query performance
+class Membership(TenantAwareModel):
+    class Meta:
+        indexes = [
+            models.Index(fields=['organization', 'status']),
+            models.Index(fields=['organization', 'expiry_date']),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['organization', 'user'], name='unique_membership_per_org')
+        ]
+```
 
 ---
 
@@ -258,132 +428,169 @@ Payment
 
 ### Principles
 
-- RESTful resource naming, JSON request/response bodies
-- Versioned under `/api/v1/`
-- Authentication via JWT Bearer token on all protected endpoints
+- All endpoints (except `/auth/` and `/config/`) operate in the context of `request.tenant`
+- No endpoint accepts a tenant identifier in the request body or URL — tenant is always derived from the subdomain
+- JWT payload contains `organization_id`; this is cross-checked against `request.tenant` on protected endpoints
 - Consistent error response shape: `{ "error": "...", "detail": "..." }`
-- Pagination on all list endpoints (cursor-based for large datasets)
+- Pagination on all list endpoints (cursor-based)
 
 ### Key Endpoints
 
+#### Tenant Config (public — no auth)
+```
+GET    /api/v1/config/                  Returns OrganizationConfig for the current tenant
+                                        (branding, feature flags, currency, registration settings)
+```
+
 #### Authentication
 ```
-POST   /api/v1/auth/register/           Register a new user
-POST   /api/v1/auth/login/              Obtain JWT access + refresh tokens
+POST   /api/v1/auth/register/           Register within the current tenant (if self-registration enabled)
+POST   /api/v1/auth/login/              Obtain JWT tokens (scoped to current tenant)
 POST   /api/v1/auth/token/refresh/      Refresh access token
 POST   /api/v1/auth/logout/             Blacklist refresh token
-GET    /api/v1/auth/me/                 Current user profile
+GET    /api/v1/auth/me/                 Current user profile + role within this org
 PATCH  /api/v1/auth/me/                 Update profile
 ```
 
-#### Memberships
+#### Memberships (authenticated member)
 ```
-GET    /api/v1/memberships/tiers/       List available membership tiers
-GET    /api/v1/memberships/me/          Current user's membership
-POST   /api/v1/memberships/join/        Initiate membership (select tier)
+GET    /api/v1/memberships/tiers/       List this org's active membership tiers
+GET    /api/v1/memberships/me/          Current user's membership within this org
+POST   /api/v1/memberships/join/        Initiate membership application
 ```
 
-#### Payments
+#### Payments (authenticated member)
 ```
-POST   /api/v1/payments/checkout/       Create Stripe Checkout session
-GET    /api/v1/payments/history/        Current user's payment history
+POST   /api/v1/payments/checkout/       Create Stripe Checkout session (on org's connected account)
+GET    /api/v1/payments/history/        Current user's payment history within this org
 POST   /api/v1/payments/cancel/         Cancel active subscription
 ```
 
-#### Webhooks
+#### Webhooks (no auth — Stripe signature validated per tenant)
 ```
-POST   /api/v1/webhooks/stripe/         Stripe webhook receiver (no auth)
+POST   /api/v1/webhooks/stripe/{org_slug}/    Stripe event receiver for a specific org
 ```
 
-#### Admin (staff/admin role required)
+The `org_slug` in the URL path is how Stripe knows which club the webhook belongs to. Each org registers this URL in its own Stripe connected account dashboard. The `stripe_webhook_secret` on `OrganizationConfig` is used for signature validation — it is unique per org.
+
+#### Org Admin (org_admin or org_staff role required)
 ```
-GET    /api/v1/admin/members/           List all members (filterable, paginated)
-GET    /api/v1/admin/members/{id}/      Member detail with full payment history
-PATCH  /api/v1/admin/members/{id}/      Update membership status / tier
-GET    /api/v1/admin/stats/             Aggregate stats (active count, revenue)
-GET    /api/v1/admin/payments/          Full payment ledger
+GET    /api/v1/admin/members/                  List this org's members
+GET    /api/v1/admin/members/{id}/             Member detail + payment history
+PATCH  /api/v1/admin/members/{id}/             Update membership status / tier
+GET    /api/v1/admin/tiers/                    List/manage this org's membership tiers
+POST   /api/v1/admin/tiers/                    Create a new tier
+PATCH  /api/v1/admin/tiers/{id}/               Update a tier
+GET    /api/v1/admin/stats/                    Aggregate stats for this org
+GET    /api/v1/admin/payments/                 Full payment ledger for this org
+```
+
+#### Platform Admin (platform_admin role required)
+```
+GET    /api/v1/platform/organizations/         List all organisations
+POST   /api/v1/platform/organizations/         Create a new organisation (onboard a club)
+GET    /api/v1/platform/organizations/{id}/    Organisation detail + config
+PATCH  /api/v1/platform/organizations/{id}/    Update config, toggle features, activate/deactivate
+GET    /api/v1/platform/stats/                 Cross-tenant aggregate stats (member count, revenue)
 ```
 
 ### Permission Model
 
-| Endpoint group | Required role |
+| Endpoint group | Required |
 |---|---|
-| `/auth/*` | Unauthenticated (register/login) or Authenticated (me) |
-| `/memberships/*` | Authenticated member |
-| `/payments/*` | Authenticated member |
-| `/admin/*` | Staff or Admin |
-| `/webhooks/stripe/` | None (validated by Stripe signature) |
+| `/config/` | None (public) |
+| `/auth/register/`, `/auth/login/` | None |
+| `/auth/me/`, `/memberships/*`, `/payments/*` | Authenticated + valid tenant membership |
+| `/admin/*` | `org_admin` or `org_staff` role in this org |
+| `/platform/*` | `platform_admin` role |
+| `/webhooks/stripe/{org_slug}/` | None (Stripe signature validation only) |
 
 ---
 
 ## 6. Payment Flow
 
-### Checkout (One-time or Subscription)
+### Stripe Connect Setup
+
+Each `Organization` is a Stripe Connect **Standard** or **Express** connected account. MemberFlow is the Stripe platform account. When a club is onboarded:
+
+1. Platform admin initiates a Stripe Connect OAuth flow for the club
+2. Club owner completes Stripe onboarding
+3. Stripe returns a `stripe_account_id` which is stored on `OrganizationConfig`
+4. Club creates their `MembershipTier` prices in MemberFlow; these are created as `Price` objects on the connected account via the Stripe API
+
+This means **all payments go directly to the club's Stripe account**. MemberFlow can optionally take a platform fee via `application_fee_amount` on the Checkout Session.
+
+### Checkout Flow
 
 ```
 1. Member selects a MembershipTier on the frontend
 2. Frontend calls POST /api/v1/payments/checkout/ with { tier_id }
 3. Backend:
-   a. Retrieves or creates a Stripe Customer for the user
-   b. Creates a Stripe Checkout Session (mode: subscription or payment)
-   c. Sets success_url and cancel_url back to the frontend
-   d. Returns { checkout_url } to the frontend
-4. Frontend redirects the browser to checkout_url (Stripe-hosted page)
-5. Member completes payment on Stripe
-6. Stripe redirects back to success_url
-7. Frontend shows confirmation screen
+   a. Reads org's stripe_account_id from OrganizationConfig
+   b. Retrieves or creates a Stripe Customer on the connected account
+   c. Creates a Checkout Session on the connected account:
+      stripe.checkout.Session.create(
+          ...,
+          stripe_account=org.config.stripe_account_id
+      )
+   d. Returns { checkout_url }
+4. Frontend redirects to the Stripe-hosted Checkout page
+5. Member completes payment
+6. Stripe redirects to success_url; frontend shows confirmation
+7. Stripe fires webhook to /api/v1/webhooks/stripe/{org_slug}/
 ```
 
-### Webhook Processing
-
-Stripe sends payment events to `POST /api/v1/webhooks/stripe/`. All events are processed asynchronously via Celery to prevent Stripe's timeout from blocking processing.
+### Webhook Processing (Per-Tenant)
 
 ```
-1. Stripe sends event to webhook endpoint
-2. Django validates Stripe-Signature header (rejects if invalid)
-3. Raw event is queued as a Celery task immediately
-4. Endpoint returns HTTP 200 to Stripe
-5. Celery worker processes the event:
-   - checkout.session.completed → activate Membership, create Payment record
-   - invoice.payment_succeeded → extend expiry, create Payment record
-   - invoice.payment_failed → set Membership to suspended, queue failure email
-   - customer.subscription.deleted → set Membership to cancelled
+1. Stripe sends event to /api/v1/webhooks/stripe/springfield-cc/
+2. Django resolves Organization from org_slug in URL
+3. Retrieves stripe_webhook_secret from OrganizationConfig
+4. Validates Stripe-Signature header (rejects with 400 if invalid)
+5. Queues Celery task: process_stripe_event.delay(event_id, organization_id)
+6. Returns HTTP 200 immediately
+7. Celery worker:
+   - checkout.session.completed      → activate Membership, create Payment
+   - invoice.payment_succeeded       → extend expiry, create Payment
+   - invoice.payment_failed          → suspend Membership, queue failure email
+   - customer.subscription.deleted   → cancel Membership
 ```
+
+The `organization_id` is passed explicitly to every Celery task. Workers never infer tenant from global or thread-local state.
 
 ### Membership State Transitions
 
 ```
          ┌──────────┐
-         │ pending  │ ← initial state on join
+         │ pending  │ ← created on join
          └────┬─────┘
-              │ payment succeeded
+              │ checkout.session.completed
               ▼
          ┌──────────┐
-    ┌───▶│  active  │◀──────────────────────┐
-    │    └────┬─────┘                       │
-    │         │ renewal succeeded           │
-    │         │                       renewal succeeded
-    │    ┌────▼────────┐                    │
-    │    │  (renewal   │                    │
-    │    │   cycle)    │─────────────────────┘
-    │    └────┬────────┘
-    │         │ payment failed
+    ┌───▶│  active  │◀─────────────────────┐
+    │    └────┬─────┘                      │
+    │         │ invoice.payment_succeeded  │
+    │         │                     invoice.payment_succeeded
+    │    ┌────▼──────────┐                 │
+    │    │ (renewal loop)│─────────────────┘
+    │    └────┬──────────┘
+    │         │ invoice.payment_failed
     │         ▼
-    │    ┌──────────────┐
-    │    │  suspended   │ (grace period, retry possible)
-    │    └────┬─────────┘
-    │         │ manual reinstate or payment recovered
+    │    ┌─────────────┐
+    │    │  suspended  │ (grace period — Stripe retries)
+    │    └────┬────────┘
+    │         │ payment recovered
     └──────────┘
-              │ subscription cancelled or not recovered
+              │ subscription deleted / not recovered
               ▼
          ┌──────────┐
-         │cancelled │ (terminal)
+         │cancelled │
          └──────────┘
 
-    expiry_date < today (periodic check)
+    expiry_date < today (Celery Beat daily check)
               ▼
          ┌──────────┐
-         │ expired  │ (terminal for non-subscription)
+         │ expired  │ (one-time payments only)
          └──────────┘
 ```
 
@@ -393,48 +600,61 @@ Stripe sends payment events to `POST /api/v1/webhooks/stripe/`. All events are p
 
 ### Celery Configuration
 
-- **Broker**: Redis (also used as result backend)
-- **Workers**: separate Docker container(s), horizontally scalable
-- **Queues**: `default`, `webhooks`, `emails` (priority separation)
-- **Beat scheduler**: Celery Beat for periodic tasks (runs as a separate process)
+- **Broker**: Redis
+- **Result backend**: Redis
+- **Workers**: separate Docker container(s), scalable independently of the API
+- **Queues**: `default`, `webhooks`, `emails`
+- **Beat**: Celery Beat for periodic tasks (separate process)
+
+### Tenant Context in Tasks
+
+All tasks receive `organization_id` as an explicit argument. No task uses thread-local state or infers the tenant from the environment.
+
+```python
+@app.task(queue='webhooks', bind=True, max_retries=5)
+def process_stripe_event(self, event_id: str, organization_id: str):
+    try:
+        org = Organization.objects.get(id=organization_id)
+        # all subsequent DB queries scoped to org
+        ...
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+```
 
 ### Task Inventory
 
 **Webhook Processing**
 ```python
-@app.task(queue='webhooks', max_retries=5, default_retry_delay=60)
-def process_stripe_event(event_id: str): ...
+process_stripe_event(event_id, organization_id)
+# Retries up to 5 times with exponential backoff. Idempotent by event_id.
 ```
-Retries with exponential backoff on transient failures. Idempotent — safe to run multiple times for the same event.
 
 **Email Notifications**
 ```python
-@app.task(queue='emails')
-def send_payment_confirmation(user_id: int, payment_id: int): ...
-
-@app.task(queue='emails')
-def send_membership_expiry_reminder(membership_id: int): ...
-
-@app.task(queue='emails')
-def send_payment_failed_notice(user_id: int): ...
+send_payment_confirmation(user_id, payment_id, organization_id)
+send_membership_expiry_reminder(membership_id, organization_id)
+send_payment_failed_notice(user_id, organization_id)
 ```
 
-**Periodic Tasks (Celery Beat)**
+**Periodic Tasks (Celery Beat — run across all active tenants)**
 ```python
-# Runs daily at 08:00 UTC
-@app.task
+# Daily 08:00 UTC
 def expire_overdue_memberships():
     """
-    Finds memberships past their expiry_date with status=active
-    and transitions them to expired.
+    Iterates all active Organizations.
+    For each, finds Memberships past expiry_date with status=active.
+    Transitions to expired. Scoped per org — no cross-tenant mutation.
     """
 
-# Runs daily at 09:00 UTC
+# Daily 09:00 UTC
 def send_expiry_reminders():
     """
-    Queues reminder emails for memberships expiring in 7 days and 1 day.
+    Per org: finds memberships expiring in reminder_days_before_expiry (from OrganizationConfig).
+    Queues send_membership_expiry_reminder task per membership.
     """
 ```
+
+Periodic tasks iterate tenants explicitly rather than querying all memberships globally. This preserves tenant isolation in background processing and makes per-tenant task failures observable in isolation.
 
 ---
 
@@ -442,63 +662,87 @@ def send_expiry_reminders():
 
 ### Docker Setup
 
-The system is defined as a multi-service Docker Compose stack for both local development and production.
-
 ```yaml
 services:
-  api:          # Django + Gunicorn
+  api:          # Django + Gunicorn (tenant-aware)
   worker:       # Celery worker
   beat:         # Celery Beat scheduler
-  nginx:        # Reverse proxy + static file serving
-  db:           # PostgreSQL (dev only; managed DB in production)
-  redis:        # Redis broker
+  nginx:        # Reverse proxy + wildcard subdomain routing + TLS termination
+  db:           # PostgreSQL (dev only — managed DB in production)
+  redis:        # Redis broker (dev only — managed Redis in production)
   frontend:     # Nginx serving built Vue.js static files
 ```
 
-In production, `db` is replaced by a DigitalOcean Managed PostgreSQL instance, and `redis` by DigitalOcean Managed Redis — both outside the application containers.
+### Subdomain Routing
+
+Nginx is configured to accept all subdomains of `memberflow.com` and forward them to the Django API. The subdomain is preserved in the `Host` header so `TenantMiddleware` can resolve it.
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name *.memberflow.com;
+
+    ssl_certificate     /etc/ssl/memberflow/fullchain.pem;   # wildcard cert
+    ssl_certificate_key /etc/ssl/memberflow/privkey.pem;
+
+    location /api/ {
+        proxy_pass http://api:8000;
+        proxy_set_header Host $host;                         # preserves subdomain
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location / {
+        root /usr/share/nginx/html;                          # built Vue.js SPA
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
+
+The wildcard TLS certificate covers `*.memberflow.com` — obtained via Let's Encrypt DNS challenge (Certbot + DigitalOcean DNS plugin), renewed automatically.
 
 ### Production Topology (DigitalOcean)
 
 ```
-                        ┌──────────────────┐
-                        │  DigitalOcean    │
-                        │  Load Balancer   │
-                        └────────┬─────────┘
-                                 │
-               ┌─────────────────┼─────────────────┐
-               ▼                                   ▼
-   ┌──────────────────────┐           ┌──────────────────────┐
-   │  Droplet: App Server │           │  Droplet: App Server │
-   │  (Nginx + Gunicorn)  │           │  (Nginx + Gunicorn)  │
-   └──────────┬───────────┘           └──────────┬───────────┘
-              │                                  │
-              └───────────────┬──────────────────┘
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-    │  Managed     │  │  Managed     │  │  Spaces CDN  │
-    │  PostgreSQL  │  │  Redis       │  │  (Frontend)  │
-    └──────────────┘  └──────────────┘  └──────────────┘
+        Wildcard DNS: *.memberflow.com → Load Balancer IP
+
+                  ┌──────────────────────┐
+                  │  DigitalOcean        │
+                  │  Load Balancer       │
+                  │  (TLS termination)   │
+                  └──────────┬───────────┘
+                             │
+            ┌────────────────┼────────────────┐
+            ▼                                 ▼
+┌──────────────────────┐         ┌──────────────────────┐
+│  App Droplet         │         │  App Droplet         │
+│  Nginx + Gunicorn    │         │  Nginx + Gunicorn    │
+│  Celery Worker       │         │  Celery Worker       │
+└──────────┬───────────┘         └──────────┬───────────┘
+           │                                │
+           └──────────────┬─────────────────┘
+                          │
+           ┌──────────────┼──────────────┐
+           ▼              ▼              ▼
+  ┌──────────────┐ ┌────────────┐ ┌──────────────────┐
+  │  Managed     │ │  Managed   │ │  Spaces + CDN    │
+  │  PostgreSQL  │ │  Redis     │ │  (static assets) │
+  └──────────────┘ └────────────┘ └──────────────────┘
 ```
 
-- **Frontend** built to static files via CI, deployed to DigitalOcean Spaces with CDN enabled
-- **API** served via Gunicorn behind Nginx on one or more Droplets
-- **Celery workers** run on the same Droplets as the API or on dedicated worker Droplets
+- **Frontend** is a single static build deployed to DigitalOcean Spaces. The SPA detects its own subdomain at runtime; there is no per-tenant build.
+- **Celery Beat** runs as a single instance (one Droplet) to avoid duplicate periodic task execution.
+- **Database and Redis** are DigitalOcean Managed services, accessible only within the private VPC.
 
-### CI/CD Pipeline
-
-Implemented via GitHub Actions:
+### CI/CD Pipeline (GitHub Actions)
 
 ```
 on: push to main
 
 jobs:
   test:
-    - Install dependencies
-    - Run Django test suite (pytest)
-    - Run frontend unit tests (Vitest)
-    - Lint (flake8, eslint)
+    - pytest (Django test suite, including tenant isolation tests)
+    - Vitest (Vue.js unit tests)
+    - flake8 + eslint
 
   build:
     - Build Docker image (backend)
@@ -506,14 +750,12 @@ jobs:
     - Push Docker image to DigitalOcean Container Registry
 
   deploy:
-    - SSH into Droplet
-    - Pull latest image
-    - Run database migrations (manage.py migrate)
-    - Restart Gunicorn and Celery services
-    - Upload built frontend to DigitalOcean Spaces
+    - SSH → pull latest image
+    - manage.py migrate
+    - Restart Gunicorn + Celery
+    - Upload frontend build to DigitalOcean Spaces
+    - Purge CDN cache
 ```
-
-Deployment only runs on a passing test job. Rollback is handled by redeploying the previous tagged Docker image.
 
 ---
 
@@ -521,75 +763,87 @@ Deployment only runs on a passing test job. Rollback is handled by redeploying t
 
 ### API Layer
 
-- Gunicorn with multiple workers (typically `2 × CPU + 1`) handles concurrent requests
-- Stateless API design allows horizontal scaling behind a load balancer with no session affinity required
-- Database connection pooling via `pgbouncer` or Django's `CONN_MAX_AGE` setting
+- Stateless design — no request carries session state; all context comes from JWT + subdomain
+- Horizontal scaling behind the load balancer with no session affinity
+- `TenantMiddleware` adds one DB lookup per request; this is cached in Redis with a short TTL (e.g. 60s) keyed by `slug`
 
 ### Database
 
-- PostgreSQL indexes on frequently queried fields: `user_id`, `status`, `expiry_date`, `stripe_subscription_id`
-- `Membership` and `Payment` tables are the primary hotspots; partitioning by date is an option at high volume
-- Read replicas can be introduced for admin reporting queries without touching the write path
+- All high-traffic tables (`Membership`, `Payment`) carry a composite index on `(organization_id, status)` and `(organization_id, expiry_date)`
+- Tenant isolation means queries are always filtered by `organization_id` — full-table scans are structurally prevented
+- At very high tenant count, PostgreSQL row-level security (RLS) can be added as a defence-in-depth layer without application changes
+- Read replicas for admin/reporting queries are introduced without touching the write path
 
 ### Celery Workers
 
-- Workers are independently scalable; additional worker containers can be deployed to increase task throughput
-- Queue separation (`webhooks`, `emails`, `default`) allows targeted scaling — e.g. scaling email workers independently of webhook processors
+- Workers are independently scalable per queue (`webhooks`, `emails`, `default`)
+- Periodic tasks iterate tenants in batches to avoid long-running single tasks that hold locks
 
 ### Frontend
 
-- Vue.js app is compiled to static assets (HTML, JS, CSS) and served from DigitalOcean Spaces via CDN
-- No server-side rendering required; all dynamic data is fetched via API at runtime
-- Cache headers are set aggressively on static assets; API responses use `Cache-Control: no-store` where appropriate
+- Single static build serves all tenants — no per-tenant build pipeline
+- DigitalOcean Spaces CDN caches assets globally; cache busting via content-hashed filenames (Vite default)
+- The tenant bootstrap call (`GET /api/v1/config/`) is the only blocking request before mount; it is fast and can be cached client-side with a short TTL
 
 ### Potential Bottlenecks
 
 | Area | Risk | Mitigation |
 |---|---|---|
-| Stripe webhook burst | High event volume may overwhelm workers | Celery queue depth monitoring; scale workers |
-| Database write contention | Concurrent membership updates | Row-level locking on `Membership`; avoid bulk updates |
-| Email delivery | Transactional email throughput | Delegate to dedicated provider (SendGrid, Postmark) |
-| Token validation | JWT decode on every request | Lightweight operation; not a bottleneck at this scale |
+| Tenant resolution DB lookup | Adds latency per request | Redis cache on `Organization` by slug |
+| Stripe webhook burst (many tenants) | Worker queue saturation | Monitor queue depth; scale workers horizontally |
+| Periodic tasks across many tenants | Beat task duration grows | Batch tenants; fan out per-tenant tasks to workers |
+| Email delivery at scale | Transactional throughput | Delegate to SendGrid or Postmark via SMTP/API |
 
 ---
 
 ## 10. Security Considerations
 
+### Tenant Isolation
+
+Tenant isolation is the highest-priority security concern. Mechanisms in place:
+
+- **Middleware layer**: every request is rejected or scoped before reaching a view
+- **`TenantScopedViewMixin`**: all views that touch tenant data must inherit this; enforced in code review
+- **JWT cross-check**: the `organization_id` in the JWT is validated against `request.tenant.id` on every authenticated request — a token from one club cannot be replayed against another club's subdomain
+- **Test coverage**: tenant isolation is tested explicitly with a suite that verifies one tenant cannot retrieve another's data through any endpoint
+
 ### Authentication
 
-- JWT access tokens have a short expiry (15 minutes); refresh tokens are longer-lived (7 days)
-- Refresh tokens are rotated on each use (SimpleJWT `ROTATE_REFRESH_TOKENS = True`)
-- Used refresh tokens are blacklisted to prevent replay attacks (SimpleJWT token blacklist app)
-- Tokens are never logged
+- JWT access tokens expire after 15 minutes; refresh tokens after 7 days
+- Refresh tokens are rotated on use (`ROTATE_REFRESH_TOKENS = True`) and blacklisted after use
+- JWT payload includes `organization_id` — tokens are implicitly scoped to a tenant
+- Tokens are never logged or included in error responses
 
 ### Password Handling
 
-- Passwords are hashed using Django's default PBKDF2-SHA256 with a high iteration count
-- Password reset tokens are time-limited and single-use
-- Minimum password complexity enforced via Django validators
+- PBKDF2-SHA256 with high iteration count (Django default)
+- Password reset tokens are time-limited (1 hour) and single-use
+- Minimum complexity enforced via Django validators
 
 ### Stripe Webhook Validation
 
-- Every inbound webhook request validates the `Stripe-Signature` header using the Stripe SDK
-- Requests failing signature validation are rejected with HTTP 400 before any processing occurs
-- The webhook signing secret is stored in environment variables, never in source code
+- Each tenant has its own `stripe_webhook_secret` (stored on `OrganizationConfig`, never in source code)
+- Signature validation uses the org-specific secret — a webhook delivered to the wrong org endpoint is rejected
+- Replay protection: Stripe includes a timestamp in the signature; events older than 5 minutes are rejected
 
 ### API Protection
 
-- All non-public endpoints require a valid JWT — unauthenticated requests receive HTTP 401
-- Role-based permission classes enforce that members cannot access admin endpoints
-- Rate limiting applied at the Nginx layer (e.g. 60 req/min per IP) and at the DRF layer for auth endpoints
-- `CORS` headers are restricted to the known frontend origin(s) only
+- All non-public endpoints require a valid JWT
+- Role checks use `UserOrganizationRole` — a user's role in org A gives no permissions in org B
+- Rate limiting: Nginx limits at 60 req/min per IP; DRF throttles auth endpoints independently
+- CORS: each tenant's frontend origin (`https://{slug}.memberflow.com`) is dynamically added to `CORS_ALLOWED_ORIGINS` via the `Organization` record — no wildcard CORS
 
 ### Infrastructure
 
-- All secrets (database credentials, Stripe keys, JWT secret) are stored as environment variables, managed via `.env` files excluded from version control
-- HTTPS enforced end-to-end; Nginx configured with TLS 1.2+ only
-- DigitalOcean Firewall restricts inbound traffic to ports 80/443 only; database and Redis are accessible only within the private VPC network
-- Docker images are scanned for known vulnerabilities as part of the CI pipeline
+- All secrets per-tenant (Stripe keys, webhook secrets) stored in the database (encrypted at rest via DigitalOcean Managed DB)
+- Platform-level secrets (JWT secret, DB credentials) stored as environment variables, excluded from version control
+- HTTPS enforced end-to-end; TLS 1.2+ only
+- DigitalOcean Firewall: ports 80/443 only; DB and Redis accessible within private VPC only
+- Docker image vulnerability scanning in CI pipeline
 
 ### Data
 
-- PII is limited to what is necessary (name, email, payment status)
-- Stripe handles all card data; MemberFlow never processes or stores raw payment card information
-- Audit trail: `Payment` records are append-only; `Membership` status changes are logged with timestamps
+- PII limited to name, email, and payment status
+- Stripe handles all card data — MemberFlow never processes or stores raw card information
+- `Payment` records are append-only; no soft-delete on financial records
+- All tenant data is logically isolated; physical separation (separate DB schemas or databases) is an upgrade path if compliance requirements demand it
