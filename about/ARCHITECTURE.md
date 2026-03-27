@@ -243,37 +243,50 @@ frontend/
 │   ├── api/
 │   │   ├── client.js          # Axios instance; JWT attachment + silent refresh interceptor
 │   │   ├── auth.js
-│   │   ├── config.js          # Fetches OrganizationConfig on boot
+│   │   ├── contact.js         # POST /api/v1/contact/ — platform contact form
 │   │   ├── memberships.js
 │   │   └── payments.js
 │   ├── components/
-│   │   ├── MemberCard.vue
-│   │   ├── StatusBadge.vue
-│   │   └── PaymentHistory.vue
+│   │   ├── platform/          # Platform marketing page components (memberflow.com)
+│   │   │   ├── PlatformNavbar.vue      # Fixed navbar; transparent → white on scroll
+│   │   │   ├── PlatformHero.vue        # Full-viewport navy→teal gradient hero
+│   │   │   ├── PlatformFeatures.vue    # 6 feature cards with Heroicons + AOS
+│   │   │   ├── PlatformPricing.vue     # 3-tier pricing; Pro highlighted
+│   │   │   ├── PlatformCarousel.vue    # CSS marquee: "Trusted by clubs"
+│   │   │   ├── PlatformContactForm.vue # #contact section; POST /api/v1/contact/
+│   │   │   └── PlatformFooter.vue      # 4-column footer
+│   │   └── club/              # Club subdomain homepage components
+│   │       ├── ClubNavbar.vue          # Club logo + name, Log in + Join Now
+│   │       └── ClubHero.vue            # Branded hero with initials fallback
+│   ├── composables/
+│   │   └── useScrollPosition.js       # window.scrollY reactive ref
 │   ├── views/
+│   │   ├── PlatformHomePage.vue   # / when no tenant — assembles platform sections
+│   │   ├── ClubHomePage.vue       # / when tenant present — assembles club sections
 │   │   ├── LoginView.vue          # /login — email/password; inline error; Forgot password link
 │   │   ├── RegisterView.vue       # /register — gated by allow_self_registration
 │   │   ├── ForgotPasswordView.vue # /forgot-password — no-enumeration confirmation
 │   │   ├── SetPasswordView.vue    # /auth/set-password?token=&mode=invite|reset
-│   │   ├── DashboardView.vue      # /dashboard — protected; placeholder
-│   │   ├── MembershipView.vue
-│   │   ├── OrgAdminView.vue
-│   │   └── PlatformAdminView.vue
+│   │   └── DashboardView.vue      # /dashboard — protected; placeholder
 │   ├── stores/
 │   │   ├── auth.js            # Access token (memory), user, isAuthenticated, isOrgAdmin
-│   │   ├── tenant.js          # OrganizationConfig, feature flags, branding
+│   │   ├── tenant.js          # OrganizationConfig, feature flags, branding, hasTenant
 │   │   └── membership.js      # Current user's membership state
 │   ├── styles/
-│   │   ├── main.scss          # Imports Bulma; sets default CSS variable overrides
+│   │   ├── main.scss          # Imports Bulma; sets default CSS variable overrides + MF platform vars
 │   │   └── _variables.scss    # SCSS variables for custom component styles
 │   ├── router/
-│   │   └── index.js           # Auth routes + beforeEach guard + ?next= redirect
-│   └── main.js                # Imports main.scss; applies tenant CSS vars on bootstrap
+│   │   └── index.js           # / → PlatformHomePage or ClubHomePage; auth routes + guards
+│   └── main.js                # Bootstraps tenant; initialises AOS; mounts app
 ├── tests/
-│   └── unit/
-│       └── api/
-│           └── client.test.js # Vitest: interceptor silent refresh + force-logout paths
+│   ├── unit/
+│   │   └── api/
+│   │       └── client.test.js # Vitest: interceptor silent refresh + force-logout paths
+│   └── e2e/
+│       ├── homepage/          # Platform + club homepage smoke tests
+│       └── auth/              # Auth regression tests (login page reachable)
 ├── public/
+├── vitest.e2e.config.ts       # Vitest config for e2e smoke tests (jsdom)
 └── vite.config.js
 ```
 
@@ -293,17 +306,63 @@ app.mount('#app')
 export const useTenantStore = defineStore('tenant', {
   state: () => ({ config: null }),
   getters: {
+    hasTenant: (state) => state.config !== null,         // true on club subdomains
     isFeatureEnabled: (state) => (flag) => state.config?.features?.[flag] ?? false,
     brandName: (state) => state.config?.name ?? 'MemberFlow',
   },
   actions: {
     async bootstrap() {
-      const { data } = await api.get('/config/')
-      this.config = data
+      try {
+        const { data } = await client.get('/api/v1/config/')
+        this.config = data
+        this._applyBranding(data.branding)
+      } catch {
+        this.config = null   // root domain (memberflow.com) → platform page
+      }
     }
   }
 })
 ```
+
+### Platform vs Club Homepage Routing
+
+The router at `/` serves two different experiences based on whether a tenant is present:
+
+```js
+// router/index.js
+{
+  path: '/',
+  component: () => import('./views/PlatformHomePage.vue'),
+  beforeEnter: async () => {
+    const tenantStore = useTenantStore()
+    if (tenantStore.hasTenant) return '/club'
+  }
+},
+{
+  path: '/club',
+  component: () => import('./views/ClubHomePage.vue'),
+  beforeEnter: async () => {
+    const tenantStore = useTenantStore()
+    if (!tenantStore.hasTenant) return '/'
+  }
+}
+```
+
+- `memberflow.com` (no tenant) → `config = null` → `hasTenant = false` → `PlatformHomePage` (marketing page)
+- `springfield-cc.memberflow.com` (tenant present) → `config = {...}` → `hasTenant = true` → `ClubHomePage`
+
+The `TenantMiddleware` was updated to pass through with `request.tenant = None` when no subdomain is detected, rather than returning 404. This allows `memberflow.com` to reach the contact endpoint and serve the SPA.
+
+### Platform Contact Form
+
+`apps/contact/` is a standalone Django app (no tenant scope) that receives enquiries from the platform marketing page:
+
+- `POST /api/v1/contact/` — public endpoint, no JWT required
+- Validates: name (min 2 chars, letters), email (RFC + MX record check via `dnspython`), message (min 20 chars)
+- Hidden honeypot field (`website`): if filled, returns 200 silently with no email queued
+- Rate limiting: 3 submissions per IP per hour (Django cache-based); 4th returns 429
+- On success: queues `tasks.contact.send_contact_email` Celery task to deliver email to configured recipient
+- Frontend shows success message replacing the form; errors are shown inline below each field (no toasts)
 
 Feature flags gate entire routes and components:
 
