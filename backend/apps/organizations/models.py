@@ -20,6 +20,8 @@ class OrganizationConfig(models.Model):
         related_name='config',
     )
     allow_self_registration = models.BooleanField(default=False)
+    # Branding: {"primary_color": "#3273dc", "secondary_color": "#23d160", "logo_url": "https://..."}
+    branding = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return f'Config for {self.organization}'
