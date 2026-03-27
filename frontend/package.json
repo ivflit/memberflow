@@ -8,6 +8,8 @@
     "check": "eslint src/"
   },
   "dependencies": {
+    "@heroicons/vue": "^2.2.0",
+    "aos": "^2.3.4",
     "axios": "^1.7.0",
     "bulma": "^1.0.0",
     "pinia": "^2.1.0",
