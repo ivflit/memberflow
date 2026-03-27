@@ -33,10 +33,10 @@ class TestTenantMiddlewareHeaderResolution:
         settings.DEBUG = False
         Organization.objects.create(name='Test Club', slug='test-club')
         # In production, subdomain is used — localhost has no subdomain so slug is None
+        # Root domain pass-through: request.tenant = None, continues to view
         request = factory.get('/', HTTP_X_TENANT_SLUG='test-club', SERVER_NAME='localhost')
-        response = middleware(request)
-        # No subdomain on 'localhost' → 400 Tenant not specified
-        assert response.status_code == 400
+        middleware(request)
+        assert request.tenant is None
 
     def test_falls_back_to_subdomain_when_no_header(self, middleware, factory, settings):
         settings.DEBUG = True
@@ -61,9 +61,10 @@ class TestTenantMiddlewareRejection:
         response = middleware(request)
         assert response.status_code == 404
 
-    def test_returns_400_when_no_slug_resolvable(self, middleware, factory, settings):
+    def test_passes_through_with_null_tenant_when_no_slug_resolvable(self, middleware, factory, settings):
         settings.DEBUG = True
-        # No header, no subdomain (plain 'localhost')
+        # No header, no subdomain (plain 'localhost') → root/platform domain
+        # Middleware sets request.tenant = None and passes through
         request = factory.get('/', SERVER_NAME='localhost')
-        response = middleware(request)
-        assert response.status_code == 400
+        middleware(request)
+        assert request.tenant is None

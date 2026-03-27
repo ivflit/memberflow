@@ -10,7 +10,10 @@ class TenantMiddleware:
     def __call__(self, request):
         slug = self._resolve_slug(request)
         if not slug:
-            return JsonResponse({'error': 'Tenant not specified'}, status=400)
+            # Root/platform domain — no tenant in scope. Pass through; tenant-scoped
+            # views will enforce non-null tenant independently.
+            request.tenant = None
+            return self.get_response(request)
         try:
             request.tenant = Organization.objects.get(slug=slug, is_active=True)
         except Organization.DoesNotExist:
