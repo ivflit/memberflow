@@ -2,7 +2,10 @@
   <section class="section">
     <div class="container">
       <div class="columns is-centered">
-        <div class="column is-narrow" style="min-width: 360px;">
+        <div
+          class="column is-narrow"
+          style="min-width: 360px;"
+        >
           <div class="box">
             <h1 class="title is-4">
               {{ mode === 'invite' ? 'Complete registration' : 'Set new password' }}
@@ -15,9 +18,16 @@
             </template>
 
             <template v-else-if="errorMessage">
-              <p class="has-text-danger">{{ errorMessage }}</p>
-              <p v-if="mode === 'reset'" class="mt-3">
-                <router-link to="/forgot-password">Request a new reset link</router-link>
+              <p class="has-text-danger">
+                {{ errorMessage }}
+              </p>
+              <p
+                v-if="mode === 'reset'"
+                class="mt-3"
+              >
+                <router-link to="/forgot-password">
+                  Request a new reset link
+                </router-link>
               </p>
             </template>
 
@@ -33,7 +43,7 @@
                         type="text"
                         placeholder="First name"
                         required
-                      />
+                      >
                     </div>
                   </div>
 
@@ -46,7 +56,7 @@
                         type="text"
                         placeholder="Last name"
                         required
-                      />
+                      >
                     </div>
                   </div>
                 </template>
@@ -61,11 +71,16 @@
                       placeholder="New password"
                       required
                       autocomplete="new-password"
-                    />
+                    >
                   </div>
                 </div>
 
-                <p v-if="fieldError" class="help is-danger">{{ fieldError }}</p>
+                <p
+                  v-if="fieldError"
+                  class="help is-danger"
+                >
+                  {{ fieldError }}
+                </p>
 
                 <div class="field">
                   <div class="control">

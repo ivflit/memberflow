@@ -2,16 +2,23 @@
   <section class="section">
     <div class="container">
       <div class="columns is-centered">
-        <div class="column is-narrow" style="min-width: 360px;">
+        <div
+          class="column is-narrow"
+          style="min-width: 360px;"
+        >
           <div class="box">
-            <h1 class="title is-4">Forgot password</h1>
+            <h1 class="title is-4">
+              Forgot password
+            </h1>
 
             <template v-if="submitted">
               <p class="has-text-grey">
                 If that email is registered, a reset link has been sent. Check your inbox.
               </p>
               <p class="mt-3">
-                <router-link to="/login">Back to sign in</router-link>
+                <router-link to="/login">
+                  Back to sign in
+                </router-link>
               </p>
             </template>
 
@@ -27,7 +34,7 @@
                       placeholder="you@example.com"
                       required
                       autocomplete="email"
-                    />
+                    >
                   </div>
                 </div>
 
@@ -45,7 +52,9 @@
               </form>
 
               <p class="mt-3 has-text-centered">
-                <router-link to="/login">Back to sign in</router-link>
+                <router-link to="/login">
+                  Back to sign in
+                </router-link>
               </p>
             </template>
           </div>

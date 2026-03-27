@@ -2,9 +2,14 @@
   <section class="section">
     <div class="container">
       <div class="columns is-centered">
-        <div class="column is-narrow" style="min-width: 360px;">
+        <div
+          class="column is-narrow"
+          style="min-width: 360px;"
+        >
           <div class="box">
-            <h1 class="title is-4">Create account</h1>
+            <h1 class="title is-4">
+              Create account
+            </h1>
 
             <template v-if="!registrationOpen">
               <p class="has-text-grey">
@@ -23,7 +28,7 @@
                       type="text"
                       placeholder="First name"
                       required
-                    />
+                    >
                   </div>
                 </div>
 
@@ -36,7 +41,7 @@
                       type="text"
                       placeholder="Last name"
                       required
-                    />
+                    >
                   </div>
                 </div>
 
@@ -50,7 +55,7 @@
                       placeholder="you@example.com"
                       required
                       autocomplete="email"
-                    />
+                    >
                   </div>
                 </div>
 
@@ -64,11 +69,16 @@
                       placeholder="Password"
                       required
                       autocomplete="new-password"
-                    />
+                    >
                   </div>
                 </div>
 
-                <p v-if="errorMessage" class="help is-danger">{{ errorMessage }}</p>
+                <p
+                  v-if="errorMessage"
+                  class="help is-danger"
+                >
+                  {{ errorMessage }}
+                </p>
 
                 <div class="field">
                   <div class="control">
