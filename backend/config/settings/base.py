@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import timedelta
+from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -19,6 +20,7 @@ INSTALLED_APPS = [
     'apps.core',
     'apps.organizations',
     'apps.users',
+    'apps.contact',
 ]
 
 MIDDLEWARE = [
@@ -67,6 +69,17 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Email — Gmail SMTP
+# Required env vars: EMAIL_HOST_USER, EMAIL_HOST_PASSWORD
+# To use Gmail: enable 2FA and create an App Password at myaccount.google.com/apppasswords
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('EMAIL_HOST_USER', default='noreply@memberflow.com')
 
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
