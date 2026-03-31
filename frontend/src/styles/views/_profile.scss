@@ -138,6 +138,23 @@
   margin-top: 0.3rem;
 }
 
+// ── Password visibility toggle ─────────────────────────────────────────────────
+.profile-pw-toggle {
+  pointer-events: auto !important;
+  cursor: pointer;
+  color: var(--db-text-muted) !important;
+  transition: color 0.15s;
+
+  &:hover {
+    color: var(--db-text-strong) !important;
+  }
+}
+
+.profile-pw-icon {
+  width: 18px;
+  height: 18px;
+}
+
 // ── Actions row ────────────────────────────────────────────────────────────────
 .profile-actions {
   display: flex;

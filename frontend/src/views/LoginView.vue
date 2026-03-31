@@ -21,15 +21,28 @@
 
       <div class="field">
         <label class="label">Password</label>
-        <div class="control">
+        <div class="control has-icons-right">
           <input
             v-model="password"
             class="input"
-            type="password"
+            :type="showPassword ? 'text' : 'password'"
             placeholder="Password"
             required
             autocomplete="current-password"
           >
+          <span
+            class="icon is-right pw-toggle"
+            @click="showPassword = !showPassword"
+          >
+            <EyeSlashIcon
+              v-if="showPassword"
+              class="pw-icon"
+            />
+            <EyeIcon
+              v-else
+              class="pw-icon"
+            />
+          </span>
         </div>
       </div>
 
@@ -71,6 +84,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
+import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '../stores/auth.js'
 import AuthLayout from '../components/club/AuthLayout.vue'
 
@@ -80,6 +94,7 @@ const authStore = useAuthStore()
 
 const email = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
 

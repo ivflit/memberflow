@@ -119,6 +119,23 @@
   transition: border-color 0.2s;
 }
 
+// ── Password visibility toggle ─────────────────────────────────────────────────
+.pw-toggle {
+  pointer-events: auto !important; // Bulma sets pointer-events: none on .icon
+  cursor: pointer;
+  color: var(--auth-text-muted, #718096) !important;
+  transition: color 0.15s;
+
+  &:hover {
+    color: var(--auth-text, #1a202c) !important;
+  }
+}
+
+.pw-icon {
+  width: 18px;
+  height: 18px;
+}
+
 // ── Form elements inside auth card ────────────────────────────────────────────
 .auth-title {
   font-size: 1.2rem;

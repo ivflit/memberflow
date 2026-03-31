@@ -122,38 +122,77 @@
               <form @submit.prevent="savePassword">
                 <div class="field">
                   <label class="profile-label">Current password</label>
-                  <div class="control">
+                  <div class="control has-icons-right">
                     <input
                       v-model="pwForm.current_password"
                       class="input profile-input"
-                      type="password"
+                      :type="showCurrentPw ? 'text' : 'password'"
                       autocomplete="current-password"
                       placeholder="••••••••"
                     >
+                    <span
+                      class="icon is-right profile-pw-toggle"
+                      @click="showCurrentPw = !showCurrentPw"
+                    >
+                      <EyeSlashIcon
+                        v-if="showCurrentPw"
+                        class="profile-pw-icon"
+                      />
+                      <EyeIcon
+                        v-else
+                        class="profile-pw-icon"
+                      />
+                    </span>
                   </div>
                 </div>
                 <div class="field">
                   <label class="profile-label">New password</label>
-                  <div class="control">
+                  <div class="control has-icons-right">
                     <input
                       v-model="pwForm.new_password"
                       class="input profile-input"
-                      type="password"
+                      :type="showNewPw ? 'text' : 'password'"
                       autocomplete="new-password"
                       placeholder="••••••••"
                     >
+                    <span
+                      class="icon is-right profile-pw-toggle"
+                      @click="showNewPw = !showNewPw"
+                    >
+                      <EyeSlashIcon
+                        v-if="showNewPw"
+                        class="profile-pw-icon"
+                      />
+                      <EyeIcon
+                        v-else
+                        class="profile-pw-icon"
+                      />
+                    </span>
                   </div>
                 </div>
                 <div class="field">
                   <label class="profile-label">Confirm new password</label>
-                  <div class="control">
+                  <div class="control has-icons-right">
                     <input
                       v-model="pwForm.confirm_password"
                       class="input profile-input"
-                      type="password"
+                      :type="showConfirmPw ? 'text' : 'password'"
                       autocomplete="new-password"
                       placeholder="••••••••"
                     >
+                    <span
+                      class="icon is-right profile-pw-toggle"
+                      @click="showConfirmPw = !showConfirmPw"
+                    >
+                      <EyeSlashIcon
+                        v-if="showConfirmPw"
+                        class="profile-pw-icon"
+                      />
+                      <EyeIcon
+                        v-else
+                        class="profile-pw-icon"
+                      />
+                    </span>
                   </div>
                 </div>
                 <div class="profile-actions">
@@ -189,22 +228,18 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { EnvelopeIcon, BuildingOfficeIcon } from '@heroicons/vue/24/outline'
+import { EnvelopeIcon, BuildingOfficeIcon, EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
 import DashboardNavbar from '../components/club/DashboardNavbar.vue'
 import { getProfile, updateProfile, changePassword } from '../api/profile.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useTenantStore } from '../stores/tenant.js'
+import { useTheme } from '../composables/useTheme.js'
 
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 
 const clubName = tenantStore.brandName
-const theme = ref(localStorage.getItem('mf-theme') || 'light')
-
-function toggleTheme() {
-  theme.value = theme.value === 'dark' ? 'light' : 'dark'
-  localStorage.setItem('mf-theme', theme.value)
-}
+const { theme, toggleTheme } = useTheme()
 
 const profile = ref({
   email: '',
@@ -223,6 +258,10 @@ const profileError = ref('')
 const savingPw = ref(false)
 const pwSuccess = ref(false)
 const pwError = ref('')
+
+const showCurrentPw = ref(false)
+const showNewPw = ref(false)
+const showConfirmPw = ref(false)
 
 const userInitials = computed(() => {
   const f = profile.value.first_name
