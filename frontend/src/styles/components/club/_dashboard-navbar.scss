@@ -61,6 +61,7 @@
   background: none !important;
   border: none !important;
   box-shadow: none !important;
+  color: var(--db-text-muted) !important; // override Bulma is-ghost color
   text-decoration: none !important;
   cursor: pointer;
   padding: 0.4rem;
@@ -74,6 +75,7 @@
   &:focus,
   &:active {
     text-decoration: none !important;
+    color: var(--db-text-muted) !important;
   }
 
   &:hover {

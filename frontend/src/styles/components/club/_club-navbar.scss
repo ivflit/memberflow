@@ -68,6 +68,7 @@
   background: none !important;
   border: none !important;
   box-shadow: none !important;
+  color: var(--cn-text-muted, #718096) !important; // override Bulma is-ghost color
   cursor: pointer;
   padding: 0.4rem;
   display: flex;
@@ -75,10 +76,10 @@
   justify-content: center;
   border-radius: 8px;
   transition: background 0.15s;
-  color: var(--cn-text-muted, #718096);
 
   &:hover {
     background: var(--cn-hover-bg, #f5f7fa) !important;
+    color: var(--cn-text, #1b2a4a) !important;
   }
 }
 
