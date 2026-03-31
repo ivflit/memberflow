@@ -1,7 +1,26 @@
+// ── Theme tokens (applied by parent [data-theme] wrapper) ──────────────────────
+[data-theme="light"] .club-navbar {
+  --cn-bg: #ffffff;
+  --cn-text: #1b2a4a;
+  --cn-text-muted: #718096;
+  --cn-border: #e8ecf0;
+  --cn-hover-bg: #f5f7fa;
+}
+
+[data-theme="dark"] .club-navbar {
+  --cn-bg: #1a1d27;
+  --cn-text: #f7fafc;
+  --cn-text-muted: #a0aec0;
+  --cn-border: #2d3148;
+  --cn-hover-bg: #252838;
+}
+
+// ── Navbar shell ───────────────────────────────────────────────────────────────
 .club-navbar {
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: var(--cn-bg, #ffffff);
+  box-shadow: 0 1px 0 var(--cn-border, #e8ecf0);
   padding: 0.25rem 0;
+  transition: background 0.2s, box-shadow 0.2s;
 }
 
 .club-brand {
@@ -19,10 +38,11 @@
 .club-name {
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--mf-navy, #1b2a4a);
+  color: var(--cn-text, #1b2a4a);
   letter-spacing: -0.3px;
 }
 
+// ── Auth buttons ───────────────────────────────────────────────────────────────
 .login-btn {
   font-weight: 600;
   border-color: var(--bulma-primary);
@@ -38,6 +58,31 @@
   font-weight: 700;
 }
 
+// ── Burger ─────────────────────────────────────────────────────────────────────
 .club-navbar .navbar-burger span {
-  background-color: var(--mf-navy, #1b2a4a);
+  background-color: var(--cn-text, #1b2a4a);
+}
+
+// ── Theme toggle button ────────────────────────────────────────────────────────
+.cn-theme-btn {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  padding: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.15s;
+  color: var(--cn-text-muted, #718096);
+
+  &:hover {
+    background: var(--cn-hover-bg, #f5f7fa) !important;
+  }
+}
+
+.cn-theme-icon {
+  width: 20px;
+  height: 20px;
 }

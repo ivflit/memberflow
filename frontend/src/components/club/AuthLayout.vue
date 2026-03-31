@@ -1,6 +1,12 @@
 <template>
-  <div class="auth-page">
-    <ClubNavbar />
+  <div
+    class="auth-page"
+    :data-theme="theme"
+  >
+    <ClubNavbar
+      :is-dark="theme === 'dark'"
+      @toggle-theme="toggleTheme"
+    />
     <div class="auth-content">
       <div class="auth-card">
         <div class="auth-brand">
@@ -29,7 +35,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import ClubNavbar from './ClubNavbar.vue'
 import { useTenantStore } from '../../stores/tenant.js'
 
@@ -44,4 +50,11 @@ const initials = computed(() =>
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join(''),
 )
+
+const theme = ref(localStorage.getItem('mf-theme') || 'light')
+
+function toggleTheme() {
+  theme.value = theme.value === 'dark' ? 'light' : 'dark'
+  localStorage.setItem('mf-theme', theme.value)
+}
 </script>

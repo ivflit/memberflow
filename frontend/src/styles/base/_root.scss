@@ -16,6 +16,17 @@ html {
   scroll-behavior: smooth;
 }
 
+// ── Page route transition ──────────────────────────────────────────────────────
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+}
+
 // Accessibility: disable animations for users who prefer reduced motion
 @media (prefers-reduced-motion: reduce) {
   [data-aos] {

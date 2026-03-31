@@ -39,6 +39,22 @@
       >
         <div class="navbar-end">
           <div class="navbar-item">
+            <button
+              class="button is-ghost cn-theme-btn"
+              :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+              @click="$emit('toggle-theme')"
+            >
+              <SunIcon
+                v-if="isDark"
+                class="cn-theme-icon"
+              />
+              <MoonIcon
+                v-else
+                class="cn-theme-icon"
+              />
+            </button>
+          </div>
+          <div class="navbar-item">
             <div class="buttons">
               <a
                 class="button is-light login-btn"
@@ -58,7 +74,17 @@
 
 <script setup>
 import { ref } from 'vue'
+import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline'
 import { useTenantStore } from '../../stores/tenant.js'
+
+defineProps({
+  isDark: {
+    type: Boolean,
+    default: false,
+  },
+})
+
+defineEmits(['toggle-theme'])
 
 const tenantStore = useTenantStore()
 const menuOpen = ref(false)

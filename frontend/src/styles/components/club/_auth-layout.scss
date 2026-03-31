@@ -1,7 +1,37 @@
+// ── Theme tokens ───────────────────────────────────────────────────────────────
+.auth-page[data-theme="light"] {
+  --auth-bg: #f5f7fa;
+  --auth-card-bg: #ffffff;
+  --auth-border: #e8ecf0;
+  --auth-text: #1a202c;
+  --auth-text-muted: #718096;
+  --auth-input-bg: #ffffff;
+  --auth-input-color: #363636;
+  --auth-input-border: #dbdbdb;
+  --auth-input-placeholder: #b5b5b5;
+  --auth-label-color: #4a4a4a;
+  --auth-divider: #e8ecf0;
+}
+
+.auth-page[data-theme="dark"] {
+  --auth-bg: #0f1117;
+  --auth-card-bg: #1e2130;
+  --auth-border: #2d3148;
+  --auth-text: #f7fafc;
+  --auth-text-muted: #a0aec0;
+  --auth-input-bg: #252838;
+  --auth-input-color: #e2e8f0;
+  --auth-input-border: #3d4263;
+  --auth-input-placeholder: #4a5568;
+  --auth-label-color: #cbd5e0;
+  --auth-divider: #2d3148;
+}
+
 // ── Auth page shell ────────────────────────────────────────────────────────────
 .auth-page {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--auth-bg, #f5f7fa);
+  transition: background 0.2s;
 }
 
 .auth-content {
@@ -14,13 +44,36 @@
 
 // ── Card ───────────────────────────────────────────────────────────────────────
 .auth-card {
-  background: #ffffff;
-  border: 1px solid #e8ecf0;
+  background: var(--auth-card-bg, #ffffff);
+  border: 1px solid var(--auth-border, #e8ecf0);
   border-radius: 16px;
   padding: 2.5rem 2rem;
   width: 100%;
   max-width: 420px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  transition: background 0.2s, border-color 0.2s;
+
+  // Fix Bulma inputs — override browser/Bulma dark mode defaults
+  .label {
+    color: var(--auth-label-color, #4a4a4a);
+  }
+
+  .input,
+  .textarea {
+    background-color: var(--auth-input-bg, #ffffff) !important;
+    color: var(--auth-input-color, #363636) !important;
+    border-color: var(--auth-input-border, #dbdbdb) !important;
+    box-shadow: none !important;
+
+    &::placeholder {
+      color: var(--auth-input-placeholder, #b5b5b5) !important;
+    }
+
+    &:focus {
+      border-color: var(--bulma-primary) !important;
+      box-shadow: 0 0 0 2px rgba(var(--bulma-primary-rgb, 50, 115, 220), 0.15) !important;
+    }
+  }
 }
 
 // ── Club branding header ───────────────────────────────────────────────────────
@@ -55,21 +108,22 @@
 .auth-club-name {
   font-size: 1rem;
   font-weight: 700;
-  color: #1a202c;
+  color: var(--auth-text, #1a202c);
   text-align: center;
 }
 
 .auth-divider {
   border: none;
-  border-top: 1px solid #e8ecf0;
+  border-top: 1px solid var(--auth-divider, #e8ecf0);
   margin: 1.5rem -2rem 1.75rem;
+  transition: border-color 0.2s;
 }
 
 // ── Form elements inside auth card ────────────────────────────────────────────
 .auth-title {
   font-size: 1.2rem;
   font-weight: 700;
-  color: #1a202c;
+  color: var(--auth-text, #1a202c);
   margin-bottom: 1.25rem;
 }
 
@@ -77,7 +131,7 @@
   margin-top: 1.25rem;
   text-align: center;
   font-size: 0.875rem;
-  color: #718096;
+  color: var(--auth-text-muted, #718096);
 
   a {
     color: var(--bulma-primary);

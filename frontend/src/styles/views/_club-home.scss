@@ -1,3 +1,8 @@
 .club-page {
   min-height: 100vh;
+  transition: background 0.2s;
+}
+
+.club-page[data-theme="dark"] {
+  background: #0f1117;
 }
