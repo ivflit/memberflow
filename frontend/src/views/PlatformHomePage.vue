@@ -21,9 +21,3 @@ import PlatformCarousel from '../components/platform/PlatformCarousel.vue'
 import PlatformContactForm from '../components/platform/PlatformContactForm.vue'
 import PlatformFooter from '../components/platform/PlatformFooter.vue'
 </script>
-
-<style scoped>
-.platform-page {
-  min-height: 100vh;
-}
-</style>

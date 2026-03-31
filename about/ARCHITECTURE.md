@@ -273,8 +273,12 @@ frontend/
 │   │   ├── tenant.js          # OrganizationConfig, feature flags, branding, hasTenant
 │   │   └── membership.js      # Current user's membership state
 │   ├── styles/
-│   │   ├── main.scss          # Imports Bulma; sets default CSS variable overrides + MF platform vars
-│   │   └── _variables.scss    # SCSS variables for custom component styles
+│   │   ├── main.scss          # Entry point — imports Bulma + all SCSS partials
+│   │   ├── _variables.scss    # SCSS variables for layout/spacing (not brand colours)
+│   │   ├── base/
+│   │   │   └── _root.scss     # :root custom property defaults, html, reduced-motion
+│   │   ├── views/             # One partial per view (dashboard, profile, etc.)
+│   │   └── components/        # Mirrors src/components/ — one partial per component
 │   ├── router/
 │   │   └── index.js           # / → PlatformHomePage or ClubHomePage; auth routes + guards
 │   └── main.js                # Bootstraps tenant; initialises AOS; mounts app
@@ -448,27 +452,34 @@ MemberFlow uses **Bulma v1.x + SCSS** for styling. Bulma v1.x is built entirely 
 
 3. Bulma v1.x reads `--bulma-primary`, `--bulma-secondary`, etc. for all component colours. Overriding these properties at the root level is all that is required — no SCSS recompilation.
 
-**SCSS usage:**
+**SCSS structure:**
 
-`src/styles/_variables.scss` contains SCSS variables used for custom component styles that go beyond Bulma's built-in components. These are compiled at build time and should not contain hardcoded tenant colours. Tenant-specific values always come through CSS custom properties at runtime.
+All styles live in `src/styles/` — **Vue SFCs have no `<style>` blocks**. The structure mirrors the component tree:
 
-`src/styles/main.scss` imports Bulma and sets sensible default CSS variable values (used when no tenant branding is applied, e.g. in development with no config endpoint):
-
-```scss
-// src/styles/main.scss
-@use 'bulma/bulma';
-@use 'variables';
-
-// Default brand values — overridden at runtime per tenant
-:root {
-  --bulma-primary: #3273dc;
-  --bulma-secondary: #23d160;
-}
+```
+src/styles/
+├── main.scss                   # Entry: @use Bulma + every partial
+├── _variables.scss             # SCSS layout/spacing vars (not brand colours)
+├── base/_root.scss             # :root defaults, html, prefers-reduced-motion
+├── views/                      # _dashboard.scss, _profile.scss, etc.
+└── components/
+    ├── club/                   # _club-hero.scss, _dashboard-navbar.scss, etc.
+    │   └── dashboard/          # _db-card.scss, _membership-status-card.scss, etc.
+    └── platform/               # _platform-navbar.scss, _platform-hero.scss, etc.
 ```
 
+`_variables.scss` contains SCSS variables for layout/spacing only. Tenant-specific colours always come through CSS custom properties at runtime, never through SCSS variables.
+
+**Adding styles for a new component:**
+1. Create `src/styles/components/<group>/_my-component.scss`
+2. Add `@use 'components/<group>/my-component';` in `main.scss`
+3. Write styles in the partial — no `<style>` block in the Vue file
+
 **Rules:**
-- Never hardcode brand colours in component `<style>` blocks — always use Bulma utility classes or `var(--bulma-*)` properties
-- Custom components that need tenant colours reference CSS custom properties, not SCSS variables
+- **No `<style>` blocks in Vue SFCs** — all styles live in `src/styles/` partials
+- Never hardcode brand colours — use Bulma utility classes or `var(--bulma-*)` properties
+- Custom components reference CSS custom properties, not SCSS variables
+- When overriding Bulma class names (e.g. `.input`) inside a component partial, scope them to a parent class to prevent global leakage
 - One static build serves all tenants; per-tenant builds are explicitly out of scope
 
 ---

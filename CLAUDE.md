@@ -296,10 +296,47 @@ Bulma reads these properties for all component colours. One static build serves 
 - For custom components, reference CSS custom properties (`var(--bulma-primary)`) — never hardcode hex colours
 - SCSS (`_variables.scss`) is for structural/layout values only — not for brand colours
 - Never add `!important` overrides to Bulma styles; override via CSS custom properties instead
+- **Never put `<style>` blocks in Vue SFCs.** All component styles live in `src/styles/` SCSS partials.
 
-**File responsibilities:**
-- `src/styles/main.scss` — imports Bulma, sets default CSS variable fallbacks (used before tenant bootstrap)
-- `src/styles/_variables.scss` — SCSS variables for custom component sizing/spacing only
+**SCSS file structure** (`src/styles/`):
+```
+styles/
+├── main.scss                          # Entry point — imports Bulma + all partials
+├── _variables.scss                    # SCSS variables for layout/spacing (not brand colours)
+├── base/
+│   └── _root.scss                     # :root custom property defaults, html, reduced-motion
+├── views/
+│   ├── _club-home.scss
+│   ├── _platform-home.scss
+│   ├── _dashboard.scss                # Dashboard theme tokens + page layout
+│   └── _profile.scss
+└── components/
+    ├── _dev-toggle.scss
+    ├── club/
+    │   ├── _club-hero.scss
+    │   ├── _club-navbar.scss
+    │   ├── _dashboard-navbar.scss
+    │   └── dashboard/
+    │       ├── _db-card.scss          # Shared card base + @keyframes shimmer
+    │       ├── _membership-status-card.scss
+    │       ├── _upcoming-events-card.scss
+    │       ├── _club-info-card.scss
+    │       └── _quick-actions-card.scss
+    └── platform/
+        ├── _platform-navbar.scss
+        ├── _platform-hero.scss
+        ├── _platform-features.scss
+        ├── _platform-footer.scss
+        ├── _platform-pricing.scss
+        ├── _platform-contact-form.scss
+        └── _platform-carousel.scss
+```
+
+**When adding a new component:**
+1. Create a SCSS partial in the matching `src/styles/components/` subdirectory (e.g. `src/styles/components/club/_my-widget.scss`)
+2. Add a `@use` line for it in `main.scss` under the appropriate group
+3. Write your styles in the partial — **do not add a `<style>` block to the Vue file**
+4. If styles use Bulma class names (`.input`, `.button`, etc.), scope them to a parent component class to avoid global leakage
 
 ---
 
@@ -481,6 +518,7 @@ Run this when: a significant feature ships, the architecture changes, or the doc
 - Commit secrets, stripe keys, or `.env` files
 - Hardcode hex colour values in components — use Bulma classes or `var(--bulma-*)` properties
 - Create per-tenant CSS builds or per-tenant stylesheets
+- Add `<style>` blocks to Vue SFCs — all styles go in `src/styles/` SCSS partials
 
 ---
 
