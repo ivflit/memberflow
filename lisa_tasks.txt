@@ -1,0 +1,53 @@
+MemberFlow — Next 10 Lisa Tasks
+================================
+Ordered by logical build dependency (each feature builds on the previous).
+
+1. Membership tiers
+   "Spec out membership tiers — admins can create and manage tiers (e.g. Full, Junior, Social)
+   with a name, description, price, duration (annual/monthly/one-time), and active/inactive status.
+   Tiers are scoped to a tenant."
+
+2. Member profile
+   "Spec out member profile — authenticated members can view and edit their own profile
+   (first name, last name, email, phone, date of birth). Admins can view any member's profile.
+   Scoped to a tenant."
+
+3. Membership subscriptions (enrolment)
+   "Spec out membership subscriptions — members can enrol in a tier, producing a membership
+   record with status (pending_payment, active, expired, cancelled). Admins can manually
+   set a membership active (for cash/bank-transfer clubs). Scoped to a tenant."
+
+4. Stripe Connect onboarding
+   "Spec out Stripe Connect onboarding — org admins can connect their club's Stripe account
+   via OAuth. Store the connected account ID per tenant. Show connection status in admin.
+   Required before payments can be taken."
+
+5. Stripe Checkout (one-time and subscription payments)
+   "Spec out payment checkout — members can pay for a membership tier via Stripe Checkout
+   (one-time for fixed-duration tiers, subscription for monthly/annual). Membership activates
+   automatically on successful payment. Scoped to a tenant's connected Stripe account."
+
+6. Stripe webhook handling
+   "Spec out Stripe webhook handling — handle invoice.paid, invoice.payment_failed,
+   customer.subscription.deleted, and charge.dispute.created events to automatically
+   update membership status. All events must be routed to the correct tenant."
+
+7. Admin member management
+   "Spec out the admin member list — org admins can view all members, filter by status
+   (active, expired, pending, cancelled), search by name or email, and export to CSV.
+   Scoped to a tenant."
+
+8. Automated email notifications
+   "Spec out automated membership emails — payment confirmation on activation, expiry
+   reminder 7 days before expiry, and lapsed notice on expiry. Sent via Celery tasks,
+   tenant-aware, using Django email backend."
+
+9. Per-tenant branding
+   "Spec out per-tenant branding — org admins can upload a logo and set a primary colour.
+   The frontend fetches branding at bootstrap and applies it via CSS custom properties.
+   Logo served from object storage (S3-compatible)."
+
+10. Platform admin dashboard
+    "Spec out the platform admin dashboard — platform-level admins can view all tenants,
+    see per-tenant member counts and subscription revenue, toggle feature flags per tenant,
+    and impersonate an org admin for support purposes."

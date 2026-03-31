@@ -1,31 +1,41 @@
 <template>
-  <section class="section">
-    <div class="container">
-      <h1 class="title">
-        Dashboard
-      </h1>
-      <p class="subtitle">
-        Welcome, {{ authStore.user?.first_name }}!
-      </p>
-      <button
-        class="button is-light"
-        @click="handleLogout"
-      >
-        Sign out
-      </button>
-    </div>
-  </section>
+  <div class="dashboard-page">
+    <DashboardNavbar />
+    <section class="section dashboard-content">
+      <div class="container">
+        <div class="columns is-multiline">
+          <div class="column is-half-tablet is-half-desktop is-full-mobile">
+            <MembershipStatusCard />
+          </div>
+          <div class="column is-half-tablet is-half-desktop is-full-mobile">
+            <UpcomingEventsCard />
+          </div>
+          <div class="column is-half-tablet is-half-desktop is-full-mobile">
+            <ClubInfoCard />
+          </div>
+          <div class="column is-half-tablet is-half-desktop is-full-mobile">
+            <QuickActionsCard />
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
 </template>
 
 <script setup>
-import { useAuthStore } from '../stores/auth.js'
-import { useRouter } from 'vue-router'
-
-const authStore = useAuthStore()
-const router = useRouter()
-
-async function handleLogout() {
-  await authStore.logout()
-  router.push('/login')
-}
+import DashboardNavbar from '../components/club/DashboardNavbar.vue'
+import MembershipStatusCard from '../components/club/dashboard/MembershipStatusCard.vue'
+import UpcomingEventsCard from '../components/club/dashboard/UpcomingEventsCard.vue'
+import ClubInfoCard from '../components/club/dashboard/ClubInfoCard.vue'
+import QuickActionsCard from '../components/club/dashboard/QuickActionsCard.vue'
 </script>
+
+<style scoped>
+.dashboard-page {
+  min-height: 100vh;
+}
+
+.dashboard-content {
+  padding-top: 4rem;
+}
+</style>
