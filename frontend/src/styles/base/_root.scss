@@ -1,0 +1,31 @@
+// Default brand colours — overridden at runtime per tenant via CSS custom properties.
+// See stores/tenant.js _applyBranding() for how OrganizationConfig.branding values
+// are applied to document.documentElement on bootstrap.
+:root {
+  --bulma-primary: #3273dc;
+  --bulma-secondary: #23d160;
+
+  // MemberFlow platform brand colours (used on marketing page only)
+  --mf-navy: #1b2a4a;
+  --mf-teal: #00c9a7;
+  --mf-surface: #f8fafc;
+  --mf-text: #334155;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+// Accessibility: disable animations for users who prefer reduced motion
+@media (prefers-reduced-motion: reduce) {
+  [data-aos] {
+    transition: none !important;
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .marquee {
+    animation-play-state: paused !important;
+  }
+}

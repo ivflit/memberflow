@@ -1,0 +1,80 @@
+.platform-footer {
+  background: var(--mf-navy);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4rem 1.5rem 2.5rem;
+}
+
+.footer-brand-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.5px;
+}
+
+.footer-tagline {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  max-width: 220px;
+}
+
+.footer-copyright {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.footer-col-heading {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 1rem;
+}
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+
+  li {
+    margin-bottom: 0.6rem;
+  }
+
+  a {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: color 0.2s ease;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--mf-teal);
+    }
+  }
+}
+
+.footer-social {
+  display: flex;
+  gap: 1rem;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.65);
+  transition: background 0.2s ease, color 0.2s ease;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--mf-teal);
+    color: #ffffff;
+  }
+}

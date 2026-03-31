@@ -1,0 +1,57 @@
+.platform-navbar {
+  background: transparent;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  padding: 0.5rem 0;
+
+  &.is-scrolled {
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+
+    .brand-name {
+      color: var(--mf-navy);
+    }
+
+    .navbar-item {
+      color: var(--mf-text);
+    }
+
+    .navbar-burger span {
+      background-color: var(--mf-navy);
+    }
+  }
+
+  .navbar-item {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--mf-teal);
+      background: transparent;
+    }
+  }
+
+  .navbar-burger span {
+    background-color: #ffffff;
+  }
+}
+
+.brand-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+}
+
+.get-started-btn {
+  background: var(--mf-teal);
+  border-color: var(--mf-teal);
+  color: #ffffff;
+  font-weight: 600;
+
+  &:hover {
+    background: #00b396;
+    border-color: #00b396;
+    color: #ffffff;
+  }
+}

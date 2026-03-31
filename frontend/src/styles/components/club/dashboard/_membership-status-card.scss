@@ -1,0 +1,24 @@
+.membership-icon {
+  background: rgba(72, 199, 142, 0.12);
+  color: #48c78e;
+}
+
+.membership-status-card {
+  .db-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+}
+
+.skeleton-line {
+  height: 0.85rem;
+  border-radius: 6px;
+  background: var(--db-skeleton);
+  width: 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.skeleton-line--short {
+  width: 60%;
+}

@@ -1,0 +1,43 @@
+.club-navbar {
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 0.25rem 0;
+}
+
+.club-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.club-logo {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+}
+
+.club-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--mf-navy, #1b2a4a);
+  letter-spacing: -0.3px;
+}
+
+.login-btn {
+  font-weight: 600;
+  border-color: var(--bulma-primary);
+  color: var(--bulma-primary);
+
+  &:hover {
+    background: var(--bulma-primary);
+    color: #ffffff;
+  }
+}
+
+.join-btn {
+  font-weight: 700;
+}
+
+.club-navbar .navbar-burger span {
+  background-color: var(--mf-navy, #1b2a4a);
+}

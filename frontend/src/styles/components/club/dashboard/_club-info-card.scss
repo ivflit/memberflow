@@ -1,0 +1,30 @@
+.info-icon {
+  background: rgba(255, 183, 77, 0.15);
+  color: #f59e0b;
+}
+
+.club-info-card {
+  .db-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+.club-info-card .club-logo {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 0.25rem;
+}
+
+.club-info-card .club-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--db-text-strong);
+}
+
+.welcome-msg {
+  font-size: 0.875rem;
+  color: var(--db-text-muted);
+}

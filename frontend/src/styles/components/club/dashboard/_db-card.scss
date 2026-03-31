@@ -1,0 +1,56 @@
+// ── Shared dashboard card base ─────────────────────────────────────────────────
+// Used by MembershipStatusCard, UpcomingEventsCard, ClubInfoCard, QuickActionsCard
+.db-card {
+  background: var(--db-card-bg);
+  border: 1px solid var(--db-border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  height: 100%;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.db-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+}
+
+.db-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.db-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--db-text-strong);
+}
+
+// ── Skeleton shimmer (shared across skeleton cards) ────────────────────────────
+@keyframes shimmer {
+  0%,
+  100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.placeholder-msg {
+  font-size: 0.8rem;
+  color: var(--db-text-muted);
+  margin-top: 0.5rem;
+}

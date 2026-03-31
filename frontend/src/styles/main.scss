@@ -1,34 +1,35 @@
 @use 'variables';
 @use 'bulma/bulma';
 
-// Default brand colours — overridden at runtime per tenant via CSS custom properties.
-// See stores/tenant.js _applyBranding() for how OrganizationConfig.branding values
-// are applied to document.documentElement on bootstrap.
-:root {
-  --bulma-primary: #3273dc;
-  --bulma-secondary: #23d160;
+// ── Base ───────────────────────────────────────────────────────────────────────
+@use 'base/root';
 
-  // MemberFlow platform brand colours (used on marketing page only)
-  --mf-navy: #1B2A4A;
-  --mf-teal: #00C9A7;
-  --mf-surface: #F8FAFC;
-  --mf-text: #334155;
-}
+// ── Views ─────────────────────────────────────────────────────────────────────
+@use 'views/club-home';
+@use 'views/platform-home';
+@use 'views/dashboard';
+@use 'views/profile';
 
-html {
-  scroll-behavior: smooth;
-}
+// ── Components: shared ────────────────────────────────────────────────────────
+@use 'components/dev-toggle';
 
-// Accessibility: disable animations for users who prefer reduced motion
-@media (prefers-reduced-motion: reduce) {
-  [data-aos] {
-    transition: none !important;
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-  }
+// ── Components: club ──────────────────────────────────────────────────────────
+@use 'components/club/club-hero';
+@use 'components/club/club-navbar';
+@use 'components/club/dashboard-navbar';
 
-  .marquee {
-    animation-play-state: paused !important;
-  }
-}
+// ── Components: club dashboard cards ─────────────────────────────────────────
+@use 'components/club/dashboard/db-card';
+@use 'components/club/dashboard/membership-status-card';
+@use 'components/club/dashboard/upcoming-events-card';
+@use 'components/club/dashboard/club-info-card';
+@use 'components/club/dashboard/quick-actions-card';
+
+// ── Components: platform ──────────────────────────────────────────────────────
+@use 'components/platform/platform-navbar';
+@use 'components/platform/platform-hero';
+@use 'components/platform/platform-features';
+@use 'components/platform/platform-footer';
+@use 'components/platform/platform-pricing';
+@use 'components/platform/platform-contact-form';
+@use 'components/platform/platform-carousel';

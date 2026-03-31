@@ -1,0 +1,61 @@
+.actions-icon {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+}
+
+.quick-actions-card {
+  .db-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--db-border);
+  border-radius: 10px;
+  text-decoration: none;
+  background: transparent;
+  transition: background 0.15s, border-color 0.15s;
+
+  &:hover {
+    background: var(--db-hover-bg);
+    border-color: var(--bulma-primary);
+  }
+}
+
+.action-btn-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--bulma-primary);
+  flex-shrink: 0;
+}
+
+.action-btn-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.action-btn-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--db-text-strong);
+}
+
+.action-btn-sub {
+  font-size: 0.75rem;
+  color: var(--db-text-muted);
+}
+
+.action-btn-chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--db-text-muted);
+  flex-shrink: 0;
+}

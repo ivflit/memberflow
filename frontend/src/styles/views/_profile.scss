@@ -1,0 +1,165 @@
+// ── Layout ─────────────────────────────────────────────────────────────────────
+.profile-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profile-forms {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+// ── Card ───────────────────────────────────────────────────────────────────────
+.profile-card {
+  background: var(--db-card-bg);
+  border: 1px solid var(--db-border);
+  border-radius: 14px;
+  padding: 1.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+// ── Avatar block ───────────────────────────────────────────────────────────────
+.profile-avatar-block {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--bulma-primary);
+  color: #ffffff;
+  font-size: 1.3rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.profile-fullname {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--db-text-strong);
+}
+
+.profile-role {
+  font-size: 0.8rem;
+  color: var(--db-text-muted);
+  margin-top: 0.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.profile-divider {
+  border: none;
+  border-top: 1px solid var(--db-border);
+  margin: 1.25rem 0;
+}
+
+// ── Meta rows ──────────────────────────────────────────────────────────────────
+.profile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.profile-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.profile-meta-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--db-text-muted);
+  flex-shrink: 0;
+}
+
+.profile-meta-value {
+  font-size: 0.875rem;
+  color: var(--db-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── Section title ──────────────────────────────────────────────────────────────
+.profile-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--db-text-strong);
+  margin-bottom: 1.25rem;
+}
+
+// ── Form inputs ────────────────────────────────────────────────────────────────
+.profile-label {
+  display: block;
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--db-text-muted);
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.profile-input {
+  background: var(--db-bg) !important;
+  border-color: var(--db-border) !important;
+  color: var(--db-text-strong) !important;
+  border-radius: 8px !important;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:focus {
+    border-color: var(--bulma-primary) !important;
+    box-shadow: 0 0 0 2px rgba(var(--bulma-primary-rgb, 72, 95, 199), 0.15) !important;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.profile-help {
+  font-size: 0.775rem;
+  color: var(--db-text-muted);
+  margin-top: 0.3rem;
+}
+
+// ── Actions row ────────────────────────────────────────────────────────────────
+.profile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.profile-save-btn {
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.profile-success-msg {
+  font-size: 0.875rem;
+  color: #48c78e;
+  font-weight: 500;
+}
+
+.profile-error-msg {
+  font-size: 0.875rem;
+  color: var(--bulma-danger, #f14668);
+  font-weight: 500;
+}
