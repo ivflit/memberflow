@@ -35,9 +35,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import ClubNavbar from './ClubNavbar.vue'
 import { useTenantStore } from '../../stores/tenant.js'
+import { useTheme } from '../../composables/useTheme.js'
 
 const tenantStore = useTenantStore()
 const clubName = tenantStore.brandName
@@ -51,10 +52,5 @@ const initials = computed(() =>
     .join(''),
 )
 
-const theme = ref(localStorage.getItem('mf-theme') || 'light')
-
-function toggleTheme() {
-  theme.value = theme.value === 'dark' ? 'light' : 'dark'
-  localStorage.setItem('mf-theme', theme.value)
-}
+const { theme, toggleTheme } = useTheme()
 </script>

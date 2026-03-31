@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import DashboardNavbar from '../components/club/DashboardNavbar.vue'
 import MembershipStatusCard from '../components/club/dashboard/MembershipStatusCard.vue'
 import UpcomingEventsCard from '../components/club/dashboard/UpcomingEventsCard.vue'
@@ -45,6 +45,7 @@ import ClubInfoCard from '../components/club/dashboard/ClubInfoCard.vue'
 import QuickActionsCard from '../components/club/dashboard/QuickActionsCard.vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useTenantStore } from '../stores/tenant.js'
+import { useTheme } from '../composables/useTheme.js'
 
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
@@ -52,10 +53,5 @@ const tenantStore = useTenantStore()
 const firstName = computed(() => authStore.user?.first_name ?? '')
 const clubName = tenantStore.brandName
 
-const theme = ref(localStorage.getItem('mf-theme') || 'light')
-
-function toggleTheme() {
-  theme.value = theme.value === 'dark' ? 'light' : 'dark'
-  localStorage.setItem('mf-theme', theme.value)
-}
+const { theme, toggleTheme } = useTheme()
 </script>

@@ -14,14 +14,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
 import ClubNavbar from '../components/club/ClubNavbar.vue'
 import ClubHero from '../components/club/ClubHero.vue'
+import { useTheme } from '../composables/useTheme.js'
 
-const theme = ref(localStorage.getItem('mf-theme') || 'light')
-
-function toggleTheme() {
-  theme.value = theme.value === 'dark' ? 'light' : 'dark'
-  localStorage.setItem('mf-theme', theme.value)
-}
+const { theme, toggleTheme } = useTheme()
 </script>
