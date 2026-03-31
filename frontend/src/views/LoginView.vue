@@ -1,81 +1,78 @@
 <template>
-  <section class="section">
-    <div class="container">
-      <div class="columns is-centered">
-        <div
-          class="column is-narrow"
-          style="min-width: 360px;"
-        >
-          <div class="box">
-            <h1 class="title is-4">
-              Sign in
-            </h1>
+  <AuthLayout>
+    <h1 class="auth-title">
+      Sign in
+    </h1>
 
-            <form @submit.prevent="handleSubmit">
-              <div class="field">
-                <label class="label">Email</label>
-                <div class="control">
-                  <input
-                    v-model="email"
-                    class="input"
-                    type="email"
-                    placeholder="you@example.com"
-                    required
-                    autocomplete="email"
-                  >
-                </div>
-              </div>
-
-              <div class="field">
-                <label class="label">Password</label>
-                <div class="control">
-                  <input
-                    v-model="password"
-                    class="input"
-                    type="password"
-                    placeholder="Password"
-                    required
-                    autocomplete="current-password"
-                  >
-                </div>
-              </div>
-
-              <p
-                v-if="errorMessage"
-                class="help is-danger"
-              >
-                {{ errorMessage }}
-              </p>
-
-              <div class="field">
-                <div class="control">
-                  <button
-                    class="button is-primary is-fullwidth"
-                    type="submit"
-                    :disabled="loading"
-                  >
-                    {{ loading ? 'Signing in\u2026' : 'Sign in' }}
-                  </button>
-                </div>
-              </div>
-            </form>
-
-            <p class="has-text-centered mt-3">
-              <router-link to="/forgot-password">
-                Forgot password?
-              </router-link>
-            </p>
-          </div>
+    <form @submit.prevent="handleSubmit">
+      <div class="field">
+        <label class="label">Email</label>
+        <div class="control">
+          <input
+            v-model="email"
+            class="input"
+            type="email"
+            placeholder="you@example.com"
+            required
+            autocomplete="email"
+          >
         </div>
       </div>
-    </div>
-  </section>
+
+      <div class="field">
+        <label class="label">Password</label>
+        <div class="control">
+          <input
+            v-model="password"
+            class="input"
+            type="password"
+            placeholder="Password"
+            required
+            autocomplete="current-password"
+          >
+        </div>
+      </div>
+
+      <p
+        v-if="errorMessage"
+        class="help is-danger"
+      >
+        {{ errorMessage }}
+      </p>
+
+      <div class="field mt-4">
+        <div class="control">
+          <button
+            class="button is-primary is-fullwidth"
+            type="submit"
+            :class="{ 'is-loading': loading }"
+            :disabled="loading"
+          >
+            Sign in
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <p class="auth-footer-link">
+      <RouterLink to="/forgot-password">
+        Forgot password?
+      </RouterLink>
+    </p>
+    <p class="auth-footer-link">
+      Don't have an account?
+      <RouterLink to="/register">
+        Register
+      </RouterLink>
+    </p>
+  </AuthLayout>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
+import AuthLayout from '../components/club/AuthLayout.vue'
 
 const router = useRouter()
 const route = useRoute()

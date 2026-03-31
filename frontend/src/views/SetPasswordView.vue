@@ -1,112 +1,103 @@
 <template>
-  <section class="section">
-    <div class="container">
-      <div class="columns is-centered">
-        <div
-          class="column is-narrow"
-          style="min-width: 360px;"
-        >
-          <div class="box">
-            <h1 class="title is-4">
-              {{ mode === 'invite' ? 'Complete registration' : 'Set new password' }}
-            </h1>
+  <AuthLayout>
+    <h1 class="auth-title">
+      {{ mode === 'invite' ? 'Complete registration' : 'Set new password' }}
+    </h1>
 
-            <template v-if="!token">
-              <p class="has-text-danger">
-                This link is invalid. Request a new invitation or password reset.
-              </p>
-            </template>
+    <template v-if="!token">
+      <p class="has-text-danger has-text-centered">
+        This link is invalid. Request a new invitation or password reset.
+      </p>
+    </template>
 
-            <template v-else-if="errorMessage">
-              <p class="has-text-danger">
-                {{ errorMessage }}
-              </p>
-              <p
-                v-if="mode === 'reset'"
-                class="mt-3"
+    <template v-else-if="errorMessage">
+      <p class="has-text-danger has-text-centered">
+        {{ errorMessage }}
+      </p>
+      <p
+        v-if="mode === 'reset'"
+        class="auth-footer-link"
+      >
+        <RouterLink to="/forgot-password">
+          Request a new reset link
+        </RouterLink>
+      </p>
+    </template>
+
+    <template v-else>
+      <form @submit.prevent="handleSubmit">
+        <template v-if="mode === 'invite'">
+          <div class="field">
+            <label class="label">First name</label>
+            <div class="control">
+              <input
+                v-model="firstName"
+                class="input"
+                type="text"
+                placeholder="First name"
+                required
               >
-                <router-link to="/forgot-password">
-                  Request a new reset link
-                </router-link>
-              </p>
-            </template>
+            </div>
+          </div>
 
-            <template v-else>
-              <form @submit.prevent="handleSubmit">
-                <template v-if="mode === 'invite'">
-                  <div class="field">
-                    <label class="label">First name</label>
-                    <div class="control">
-                      <input
-                        v-model="firstName"
-                        class="input"
-                        type="text"
-                        placeholder="First name"
-                        required
-                      >
-                    </div>
-                  </div>
+          <div class="field">
+            <label class="label">Last name</label>
+            <div class="control">
+              <input
+                v-model="lastName"
+                class="input"
+                type="text"
+                placeholder="Last name"
+                required
+              >
+            </div>
+          </div>
+        </template>
 
-                  <div class="field">
-                    <label class="label">Last name</label>
-                    <div class="control">
-                      <input
-                        v-model="lastName"
-                        class="input"
-                        type="text"
-                        placeholder="Last name"
-                        required
-                      >
-                    </div>
-                  </div>
-                </template>
-
-                <div class="field">
-                  <label class="label">New password</label>
-                  <div class="control">
-                    <input
-                      v-model="password"
-                      class="input"
-                      type="password"
-                      placeholder="New password"
-                      required
-                      autocomplete="new-password"
-                    >
-                  </div>
-                </div>
-
-                <p
-                  v-if="fieldError"
-                  class="help is-danger"
-                >
-                  {{ fieldError }}
-                </p>
-
-                <div class="field">
-                  <div class="control">
-                    <button
-                      class="button is-primary is-fullwidth"
-                      type="submit"
-                      :disabled="loading"
-                    >
-                      {{ loading ? 'Saving\u2026' : 'Set password' }}
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </template>
+        <div class="field">
+          <label class="label">New password</label>
+          <div class="control">
+            <input
+              v-model="password"
+              class="input"
+              type="password"
+              placeholder="New password"
+              required
+              autocomplete="new-password"
+            >
           </div>
         </div>
-      </div>
-    </div>
-  </section>
+
+        <p
+          v-if="fieldError"
+          class="help is-danger"
+        >
+          {{ fieldError }}
+        </p>
+
+        <div class="field mt-4">
+          <div class="control">
+            <button
+              class="button is-primary is-fullwidth"
+              type="submit"
+              :class="{ 'is-loading': loading }"
+              :disabled="loading"
+            >
+              Set password
+            </button>
+          </div>
+        </div>
+      </form>
+    </template>
+  </AuthLayout>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import client from '../api/client.js'
+import AuthLayout from '../components/club/AuthLayout.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -144,11 +135,9 @@ async function handleSubmit() {
     const data = err.response?.data
 
     if (status === 410) {
-      if (mode === 'invite') {
-        errorMessage.value = 'This invitation has expired. Ask your admin to resend.'
-      } else {
-        errorMessage.value = 'This reset link has expired. Request a new one.'
-      }
+      errorMessage.value = mode === 'invite'
+        ? 'This invitation has expired. Ask your admin to resend.'
+        : 'This reset link has expired. Request a new one.'
     } else if (status === 400) {
       if (data?.detail) {
         errorMessage.value = data.detail

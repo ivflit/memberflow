@@ -14,6 +14,7 @@
 @use 'components/dev-toggle';
 
 // ── Components: club ──────────────────────────────────────────────────────────
+@use 'components/club/auth-layout';
 @use 'components/club/club-hero';
 @use 'components/club/club-navbar';
 @use 'components/club/dashboard-navbar';
