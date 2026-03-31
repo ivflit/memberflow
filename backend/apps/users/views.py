@@ -6,6 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken as SimpleJWTRefreshToke
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
+from rest_framework.permissions import IsAuthenticated
 from apps.core.throttles import LoginRateThrottle, PasswordResetRateThrottle
 from apps.core.permissions import IsOrgStaff
 from apps.users.models import (
@@ -14,7 +15,7 @@ from apps.users.models import (
 from apps.users.serializers import (
     RegisterSerializer, LoginSerializer, SendInviteSerializer,
     InviteAcceptSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
-    UserSerializer,
+    UserSerializer, ProfileUpdateSerializer, ChangePasswordSerializer,
 )
 from apps.users.tokens import make_tokens_for_user
 
@@ -347,3 +348,47 @@ class PasswordResetConfirmView(APIView):
         reset_token.save()
 
         return Response(_token_response(user), status=status.HTTP_200_OK)
+
+
+class ProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+
+    def patch(self, request):
+        serializer = ProfileUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        data = serializer.validated_data
+        if 'first_name' in data:
+            user.first_name = data['first_name']
+        if 'last_name' in data:
+            user.last_name = data['last_name']
+        user.save()
+
+        return Response(UserSerializer(user).data)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        if not user.check_password(serializer.validated_data['current_password']):
+            return Response(
+                {'detail': 'Current password is incorrect.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+        return Response({'detail': 'Password updated successfully.'}, status=status.HTTP_200_OK)

@@ -72,3 +72,20 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 class SendInviteSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
+
+class ProfileUpdateSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=150, required=False)
+    last_name = serializers.CharField(max_length=150, required=False)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        try:
+            validate_password(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(list(e.messages))
+        return value
