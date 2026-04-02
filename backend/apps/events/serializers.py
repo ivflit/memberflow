@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from apps.events.models import EventCategory, Event
 from apps.events.eligibility import is_event_eligible
+from apps.memberships.models import MembershipTier
 
 
 class EventCategorySerializer(serializers.ModelSerializer):
@@ -62,8 +63,7 @@ class AdminEventSerializer(serializers.ModelSerializer):
     restricted_to_tiers = serializers.PrimaryKeyRelatedField(
         many=True,
         required=False,
-        read_only=False,
-        queryset=[],  # overridden in __init__ to be tenant-scoped
+        queryset=MembershipTier.objects.none(),  # overridden in __init__ to be tenant-scoped
     )
     restricted_to_roles = serializers.ListField(
         child=serializers.CharField(max_length=20),
