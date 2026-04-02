@@ -92,7 +92,7 @@ memberflow/
 │   ├── middleware.py          # TenantMiddleware
 │   ├── managers.py            # TenantManager base queryset
 │   ├── mixins.py              # TenantScopedViewMixin for DRF views
-│   └── permissions.py        # IsOrgAdmin, IsPlatformAdmin, IsOwnerOrOrgAdmin
+│   └── permissions.py        # IsOrgAdmin, IsOrgStaff, IsPlatformAdmin
 ├── tasks/                     # Celery task definitions (all tenant-aware)
 └── manage.py
 ```
@@ -210,8 +210,9 @@ Token payload: `{ user_id, organization_id, role, exp, jti }`
 - `Payment` and `Subscription` models inherit from `TenantAwareModel`
 
 **`admin_portal`**
-- Org admin views: full member/payment management, scoped to their organisation
-- Platform admin views: cross-tenant read access for support (no data mutation across tenant boundaries)
+- Org admin views: member list (`GET /api/v1/admin/members/`), member detail (`GET /api/v1/admin/members/{id}/`), member CSV export (`GET /api/v1/admin/members/export/`) — all scoped to `request.tenant`
+- Platform admin views: cross-tenant member read and edit (`GET/PATCH /api/v1/platform/members/{id}/`) — no tenant filter, for support use only
+- `IsOrgStaff` permission (admins + staff) gates list and detail; `IsOrgAdmin` gates export; `IsPlatformAdmin` gates platform endpoints
 - Separated permission classes prevent org admins from accessing platform admin endpoints
 
 **`webhooks`**
@@ -638,8 +639,21 @@ POST   /api/v1/auth/invite/                Org admin sends invitation email (org
 POST   /api/v1/auth/invite/accept/         Invitee completes registration via token (7-day, single-use)
 POST   /api/v1/auth/password/reset/        Request password reset email (no enumeration — always 200)
 POST   /api/v1/auth/password/reset/confirm/ Complete reset; auto-logs user in on success
-GET    /api/v1/auth/me/                    Current user profile + role within this org
-PATCH  /api/v1/auth/me/                    Update profile
+GET    /api/v1/profile/                    Current user profile + role within this org
+PATCH  /api/v1/profile/                    Update profile (supports DOB + address fields)
+```
+
+#### Org Admin (IsOrgAdmin / IsOrgStaff)
+```
+GET    /api/v1/admin/members/             Member list with calculated age (IsOrgStaff)
+GET    /api/v1/admin/members/{id}/        Member detail with DOB + address (IsOrgStaff)
+GET    /api/v1/admin/members/export/      CSV export of all members (IsOrgAdmin only)
+```
+
+#### Platform Admin (IsPlatformAdmin — cross-tenant)
+```
+GET    /api/v1/platform/members/{id}/     Read any member across any tenant
+PATCH  /api/v1/platform/members/{id}/     Edit member DOB + address for support
 ```
 
 #### Memberships (authenticated member)

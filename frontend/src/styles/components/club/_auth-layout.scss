@@ -136,6 +136,16 @@
   height: 18px;
 }
 
+.auth-section-label {
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: var(--auth-text-muted, #718096);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 0.75rem;
+  margin-top: 0.25rem;
+}
+
 // ── Form elements inside auth card ────────────────────────────────────────────
 .auth-title {
   font-size: 1.2rem;

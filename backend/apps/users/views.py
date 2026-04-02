@@ -74,6 +74,11 @@ class RegisterView(APIView):
             email=email,
             first_name=data['first_name'],
             last_name=data['last_name'],
+            date_of_birth=data.get('date_of_birth'),
+            address_street=data.get('address_street'),
+            address_city=data.get('address_city'),
+            address_postcode=data.get('address_postcode'),
+            address_country=data.get('address_country'),
         )
         user.set_password(data['password'])
         user.save()
@@ -249,6 +254,11 @@ class InviteAcceptView(APIView):
             email=invitation.email,
             first_name=data['first_name'],
             last_name=data['last_name'],
+            date_of_birth=data.get('date_of_birth'),
+            address_street=data.get('address_street'),
+            address_city=data.get('address_city'),
+            address_postcode=data.get('address_postcode'),
+            address_country=data.get('address_country'),
         )
         user.set_password(data['password'])
         user.save()
@@ -365,10 +375,10 @@ class ProfileView(APIView):
 
         user = request.user
         data = serializer.validated_data
-        if 'first_name' in data:
-            user.first_name = data['first_name']
-        if 'last_name' in data:
-            user.last_name = data['last_name']
+        for field in ('first_name', 'last_name', 'date_of_birth',
+                      'address_street', 'address_city', 'address_postcode', 'address_country'):
+            if field in data:
+                setattr(user, field, data[field])
         user.save()
 
         return Response(UserSerializer(user).data)

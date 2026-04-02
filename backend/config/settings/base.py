@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     'apps.organizations',
     'apps.users',
     'apps.contact',
+    'apps.admin_portal',
 ]
 
 MIDDLEWARE = [

@@ -79,6 +79,62 @@
           </div>
         </div>
 
+        <div class="field">
+          <label class="label">Date of birth</label>
+          <div class="control">
+            <input
+              v-model="dateOfBirth"
+              class="input"
+              type="date"
+            >
+          </div>
+        </div>
+
+        <p class="auth-section-label">
+          Address <span class="has-text-grey">(optional)</span>
+        </p>
+
+        <div class="field">
+          <div class="control">
+            <input
+              v-model="addressStreet"
+              class="input"
+              type="text"
+              placeholder="Street address"
+            >
+          </div>
+        </div>
+        <div class="field">
+          <div class="control">
+            <input
+              v-model="addressCity"
+              class="input"
+              type="text"
+              placeholder="City"
+            >
+          </div>
+        </div>
+        <div class="field">
+          <div class="control">
+            <input
+              v-model="addressPostcode"
+              class="input"
+              type="text"
+              placeholder="Postcode"
+            >
+          </div>
+        </div>
+        <div class="field">
+          <div class="control">
+            <input
+              v-model="addressCountry"
+              class="input"
+              type="text"
+              placeholder="Country"
+            >
+          </div>
+        </div>
+
         <p
           v-if="errorMessage"
           class="help is-danger"
@@ -129,6 +185,11 @@ const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
+const dateOfBirth = ref('')
+const addressStreet = ref('')
+const addressCity = ref('')
+const addressPostcode = ref('')
+const addressCountry = ref('')
 
 async function handleSubmit() {
   loading.value = true
@@ -139,6 +200,11 @@ async function handleSubmit() {
       password: password.value,
       first_name: firstName.value,
       last_name: lastName.value,
+      date_of_birth: dateOfBirth.value || null,
+      address_street: addressStreet.value || null,
+      address_city: addressCity.value || null,
+      address_postcode: addressPostcode.value || null,
+      address_country: addressCountry.value || null,
     })
     router.push('/dashboard')
   } catch (err) {

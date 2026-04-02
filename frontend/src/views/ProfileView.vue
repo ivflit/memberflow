@@ -76,6 +76,16 @@
                   </div>
                 </div>
                 <div class="field">
+                  <label class="profile-label">Date of birth</label>
+                  <div class="control">
+                    <input
+                      v-model="editForm.date_of_birth"
+                      class="input profile-input"
+                      type="date"
+                    >
+                  </div>
+                </div>
+                <div class="field">
                   <label class="profile-label">Email address</label>
                   <div class="control">
                     <input
@@ -109,6 +119,81 @@
                     :disabled="savingProfile"
                   >
                     Save changes
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Address -->
+            <div class="profile-card">
+              <h2 class="profile-section-title">
+                Address
+              </h2>
+              <form @submit.prevent="saveAddress">
+                <div class="field">
+                  <label class="profile-label">Street address</label>
+                  <div class="control">
+                    <input
+                      v-model="addressForm.address_street"
+                      class="input profile-input"
+                      type="text"
+                      placeholder="123 Main Street"
+                    >
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="profile-label">City</label>
+                  <div class="control">
+                    <input
+                      v-model="addressForm.address_city"
+                      class="input profile-input"
+                      type="text"
+                      placeholder="City"
+                    >
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="profile-label">Postcode</label>
+                  <div class="control">
+                    <input
+                      v-model="addressForm.address_postcode"
+                      class="input profile-input"
+                      type="text"
+                      placeholder="Postcode"
+                    >
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="profile-label">Country</label>
+                  <div class="control">
+                    <input
+                      v-model="addressForm.address_country"
+                      class="input profile-input"
+                      type="text"
+                      placeholder="Country"
+                    >
+                  </div>
+                </div>
+                <div class="profile-actions">
+                  <p
+                    v-if="addressSuccess"
+                    class="profile-success-msg"
+                  >
+                    ✓ Address updated
+                  </p>
+                  <p
+                    v-if="addressError"
+                    class="profile-error-msg"
+                  >
+                    {{ addressError }}
+                  </p>
+                  <button
+                    class="button is-primary profile-save-btn"
+                    type="submit"
+                    :class="{ 'is-loading': savingAddress }"
+                    :disabled="savingAddress"
+                  >
+                    Save address
                   </button>
                 </div>
               </form>
@@ -248,12 +333,17 @@ const profile = ref({
   role: 'member',
 })
 
-const editForm = ref({ first_name: '', last_name: '' })
+const editForm = ref({ first_name: '', last_name: '', date_of_birth: '' })
+const addressForm = ref({ address_street: '', address_city: '', address_postcode: '', address_country: '' })
 const pwForm = ref({ current_password: '', new_password: '', confirm_password: '' })
 
 const savingProfile = ref(false)
 const profileSuccess = ref(false)
 const profileError = ref('')
+
+const savingAddress = ref(false)
+const addressSuccess = ref(false)
+const addressError = ref('')
 
 const savingPw = ref(false)
 const pwSuccess = ref(false)
@@ -291,13 +381,23 @@ onMounted(async () => {
   try {
     const { data } = await getProfile()
     profile.value = data
-    editForm.value = { first_name: data.first_name, last_name: data.last_name }
+    editForm.value = {
+      first_name: data.first_name,
+      last_name: data.last_name,
+      date_of_birth: data.date_of_birth ?? '',
+    }
+    addressForm.value = {
+      address_street: data.address_street ?? '',
+      address_city: data.address_city ?? '',
+      address_postcode: data.address_postcode ?? '',
+      address_country: data.address_country ?? '',
+    }
   } catch {
     // Fall back to auth store data if request fails
     const u = authStore.user
     if (u) {
       profile.value = { ...u }
-      editForm.value = { first_name: u.first_name ?? '', last_name: u.last_name ?? '' }
+      editForm.value = { first_name: u.first_name ?? '', last_name: u.last_name ?? '', date_of_birth: '' }
     }
   }
 })
@@ -309,7 +409,11 @@ async function saveProfile() {
   try {
     const { data } = await updateProfile(editForm.value)
     profile.value = data
-    editForm.value = { first_name: data.first_name, last_name: data.last_name }
+    editForm.value = {
+      first_name: data.first_name,
+      last_name: data.last_name,
+      date_of_birth: data.date_of_birth ?? '',
+    }
     // Keep auth store in sync
     if (authStore.user) {
       authStore.user.first_name = data.first_name
@@ -321,6 +425,27 @@ async function saveProfile() {
     profileError.value = err.response?.data?.detail ?? 'Failed to update profile.'
   } finally {
     savingProfile.value = false
+  }
+}
+
+async function saveAddress() {
+  addressError.value = ''
+  addressSuccess.value = false
+  savingAddress.value = true
+  try {
+    const { data } = await updateProfile(addressForm.value)
+    addressForm.value = {
+      address_street: data.address_street ?? '',
+      address_city: data.address_city ?? '',
+      address_postcode: data.address_postcode ?? '',
+      address_country: data.address_country ?? '',
+    }
+    addressSuccess.value = true
+    setTimeout(() => { addressSuccess.value = false }, 3000)
+  } catch (err) {
+    addressError.value = err.response?.data?.detail ?? 'Failed to update address.'
+  } finally {
+    savingAddress.value = false
   }
 }
 

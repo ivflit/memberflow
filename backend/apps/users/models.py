@@ -12,6 +12,11 @@ class User(TenantAwareModel):
     last_name = models.CharField(max_length=150)
     is_active = models.BooleanField(default=True)
     password = models.CharField(max_length=128)
+    date_of_birth = models.DateField(null=True, blank=True)
+    address_street = models.CharField(max_length=255, null=True, blank=True)
+    address_city = models.CharField(max_length=100, null=True, blank=True)
+    address_postcode = models.CharField(max_length=20, null=True, blank=True)
+    address_country = models.CharField(max_length=100, null=True, blank=True)
 
     REQUIRED_FIELDS = []
     USERNAME_FIELD = 'email'
