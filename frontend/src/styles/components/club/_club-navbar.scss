@@ -1,18 +1,22 @@
-// ── Theme tokens (applied by parent [data-theme] wrapper) ──────────────────────
-[data-theme="light"] .club-navbar {
+// ── Theme tokens ───────────────────────────────────────────────────────────────
+[data-theme="light"] .club-navbar,
+[data-theme="light"] .cn-dropdown-panel {
   --cn-bg: #ffffff;
   --cn-text: #1b2a4a;
   --cn-text-muted: #718096;
   --cn-border: #e8ecf0;
   --cn-hover-bg: #f5f7fa;
+  --cn-dropdown-bg: #ffffff;
 }
 
-[data-theme="dark"] .club-navbar {
+[data-theme="dark"] .club-navbar,
+[data-theme="dark"] .cn-dropdown-panel {
   --cn-bg: #1a1d27;
   --cn-text: #f7fafc;
   --cn-text-muted: #a0aec0;
   --cn-border: #2d3148;
   --cn-hover-bg: #252838;
+  --cn-dropdown-bg: #1e2130;
 }
 
 // ── Navbar shell ───────────────────────────────────────────────────────────────
@@ -86,4 +90,153 @@
 .cn-theme-icon {
   width: 20px;
   height: 20px;
+}
+
+// ── Nav links ──────────────────────────────────────────────────────────────────
+.cn-nav-link {
+  color: var(--cn-text-muted, #718096);
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover {
+    color: var(--cn-text, #1b2a4a);
+    background: transparent;
+  }
+
+  &.is-active {
+    color: var(--bulma-primary);
+    border-bottom-color: var(--bulma-primary);
+    font-weight: 600;
+    background: transparent;
+  }
+}
+
+// ── Icon buttons ───────────────────────────────────────────────────────────────
+.cn-icon-wrapper {
+  position: relative;
+}
+
+.cn-nav-icon {
+  width: 20px;
+  height: 20px;
+}
+
+// ── Avatar ─────────────────────────────────────────────────────────────────────
+.cn-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bulma-primary);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.cn-avatar--lg {
+  width: 40px;
+  height: 40px;
+  font-size: 1rem;
+}
+
+// ── Dropdown ───────────────────────────────────────────────────────────────────
+.cn-dropdown-fade-enter-active,
+.cn-dropdown-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.cn-dropdown-fade-enter-from,
+.cn-dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.cn-dropdown-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: var(--cn-dropdown-bg, #ffffff);
+  border: 1px solid var(--cn-border, #e8ecf0);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.cn-avatar-panel {
+  min-width: 220px;
+}
+
+.cn-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  color: var(--cn-text, #1b2a4a);
+  text-decoration: none;
+  transition: background 0.12s;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cn-hover-bg, #f5f7fa);
+  }
+}
+
+.cn-dropdown-item--muted {
+  color: var(--cn-text-muted, #718096);
+  cursor: default;
+
+  &:hover {
+    background: transparent;
+  }
+}
+
+.cn-dropdown-item--danger {
+  color: var(--bulma-danger, #f14668);
+}
+
+.cn-dropdown-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--cn-text-muted, #718096);
+  flex-shrink: 0;
+}
+
+.cn-dropdown-divider {
+  margin: 0;
+  border: none;
+  border-top: 1px solid var(--cn-border, #e8ecf0);
+}
+
+.cn-dropdown-user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+
+.cn-user-email {
+  font-size: 0.8rem;
+  color: var(--cn-text-muted, #718096);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+// ── Auth buttons ───────────────────────────────────────────────────────────────
+.cn-login-btn {
+  font-weight: 600;
+}
+
+.cn-join-btn {
+  font-weight: 600;
 }
