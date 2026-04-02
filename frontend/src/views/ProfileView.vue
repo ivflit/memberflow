@@ -306,6 +306,49 @@
             </div>
           </div>
         </div>
+
+        <!-- My Agenda -->
+        <div class="profile-agenda">
+          <h2 class="profile-section-title profile-agenda-title">
+            My Upcoming Events
+          </h2>
+
+          <div
+            v-if="agendaLoading"
+            class="profile-agenda-loading"
+          >
+            <div
+              v-for="n in 3"
+              :key="n"
+              class="profile-agenda-skeleton"
+            />
+          </div>
+
+          <div
+            v-else-if="agendaEvents.length === 0"
+            class="profile-agenda-empty"
+          >
+            <p>No upcoming events</p>
+          </div>
+
+          <ul
+            v-else
+            class="profile-agenda-list"
+          >
+            <li
+              v-for="event in agendaEvents"
+              :key="event.id"
+              class="profile-agenda-item"
+            >
+              <span class="profile-agenda-date">{{ formatAgendaDate(event.start_datetime) }}</span>
+              <span class="profile-agenda-name">{{ event.title }}</span>
+              <span
+                v-if="event.venue_name"
+                class="profile-agenda-venue"
+              >{{ event.venue_name }}</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </section>
   </div>
@@ -316,6 +359,7 @@ import { ref, computed, onMounted } from 'vue'
 import { EnvelopeIcon, BuildingOfficeIcon, EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
 import DashboardNavbar from '../components/club/DashboardNavbar.vue'
 import { getProfile, updateProfile, changePassword } from '../api/profile.js'
+import { getAgenda } from '../api/events.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useTenantStore } from '../stores/tenant.js'
 import { useTheme } from '../composables/useTheme.js'
@@ -352,6 +396,19 @@ const pwError = ref('')
 const showCurrentPw = ref(false)
 const showNewPw = ref(false)
 const showConfirmPw = ref(false)
+
+const agendaEvents = ref([])
+const agendaLoading = ref(true)
+
+function formatAgendaDate(dt) {
+  return new Date(dt).toLocaleString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 
 const userInitials = computed(() => {
   const f = profile.value.first_name
@@ -399,6 +456,15 @@ onMounted(async () => {
       profile.value = { ...u }
       editForm.value = { first_name: u.first_name ?? '', last_name: u.last_name ?? '', date_of_birth: '' }
     }
+  }
+
+  try {
+    const { data } = await getAgenda()
+    agendaEvents.value = data.results ?? data
+  } catch {
+    // Silent fail — agenda is non-critical
+  } finally {
+    agendaLoading.value = false
   }
 })
 

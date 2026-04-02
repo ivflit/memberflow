@@ -84,6 +84,7 @@ memberflow/
 │   ├── organizations/         # Tenant model, config, feature flags
 │   ├── users/                 # Registration, auth, profiles (tenant-scoped)
 │   ├── memberships/           # Tiers, membership records, status (tenant-scoped)
+│   ├── events/                # Club events, categories, eligibility (tenant-scoped)
 │   ├── payments/              # Stripe Connect integration, payment records
 │   ├── admin_portal/          # Org-admin and platform-admin views
 │   └── webhooks/              # Per-tenant Stripe webhook receiver
@@ -209,6 +210,15 @@ Token payload: `{ user_id, organization_id, role, exp, jti }`
 - Checkout sessions are created on behalf of the connected account
 - `Payment` and `Subscription` models inherit from `TenantAwareModel`
 
+**`events`**
+- `EventCategory`: per-organisation event categories (name, colour)
+- `Event`: tenant-scoped event with title, description, start/end datetime, venue (name + postcode), image URL, status (`draft`/`published`/`cancelled`/`archived`), optional tier and role restrictions
+- `restricted_to_tiers`: ManyToMany to `MembershipTier` — if set, only members with an active membership in one of those tiers are eligible
+- `restricted_to_roles`: `ArrayField(CharField)` — if set, only members with one of those roles are eligible; restriction is OR logic (tier match OR role match)
+- `is_event_eligible(event, user)` helper in `apps/events/eligibility.py` — used by the serializer to compute the `is_eligible` field per-request
+- Public list endpoint filters to `published` + `cancelled` events only, ordered by `start_datetime`; supports `search`, `category`, `date_from`, `date_to` query params; paginated (page_size=20)
+- Agenda endpoint (`GET /api/v1/events/agenda/`) returns up to 5 upcoming published events the authenticated user is eligible for
+
 **`admin_portal`**
 - Org admin views: member list (`GET /api/v1/admin/members/`), member detail (`GET /api/v1/admin/members/{id}/`), member CSV export (`GET /api/v1/admin/members/export/`) — all scoped to `request.tenant`
 - Platform admin views: cross-tenant member read and edit (`GET/PATCH /api/v1/platform/members/{id}/`) — no tenant filter, for support use only
@@ -268,7 +278,9 @@ frontend/
 │   │   ├── RegisterView.vue       # /register — gated by allow_self_registration
 │   │   ├── ForgotPasswordView.vue # /forgot-password — no-enumeration confirmation
 │   │   ├── SetPasswordView.vue    # /auth/set-password?token=&mode=invite|reset
-│   │   └── DashboardView.vue      # /dashboard — protected; placeholder
+│   │   ├── DashboardView.vue      # /dashboard — protected; placeholder
+│   │   ├── ProfileView.vue        # /profile — protected; edit details, address, password, My Agenda
+│   │   └── EventsView.vue         # /events — public; search/filter, event cards, lock badge, pagination
 │   ├── stores/
 │   │   ├── auth.js            # Access token (memory), user, isAuthenticated, isOrgAdmin
 │   │   ├── tenant.js          # OrganizationConfig, feature flags, branding, hasTenant
@@ -654,6 +666,29 @@ GET    /api/v1/admin/members/export/      CSV export of all members (IsOrgAdmin 
 ```
 GET    /api/v1/platform/members/{id}/     Read any member across any tenant
 PATCH  /api/v1/platform/members/{id}/     Edit member DOB + address for support
+```
+
+#### Events (public — no auth required)
+```
+GET    /api/v1/events/                  List published + cancelled events (paginated, filterable)
+GET    /api/v1/events/{id}/             Event detail (includes is_restricted + is_eligible for auth users)
+GET    /api/v1/events/categories/       List event categories for this org
+GET    /api/v1/events/agenda/           Up to 5 upcoming eligible events (auth required)
+```
+
+Events are ordered by `start_datetime`. Filters: `search` (title/description), `category` (category ID), `date_from`, `date_to`. Response includes `is_restricted` (bool) and `is_eligible` (bool) for each event. Unauthenticated users see `is_eligible: false` for restricted events.
+
+#### Admin Events (org_admin or org_staff role required)
+```
+GET    /api/v1/admin/events/                       List all events for this org (all statuses)
+POST   /api/v1/admin/events/                       Create an event
+GET    /api/v1/admin/events/{id}/                  Event detail
+PATCH  /api/v1/admin/events/{id}/                  Update event
+DELETE /api/v1/admin/events/{id}/                  Delete event (draft only; returns 409 otherwise)
+GET    /api/v1/admin/events/categories/            List event categories for this org
+POST   /api/v1/admin/events/categories/            Create a category
+PATCH  /api/v1/admin/events/categories/{id}/       Update a category
+DELETE /api/v1/admin/events/categories/{id}/       Delete category (returns 409 if events exist)
 ```
 
 #### Memberships (authenticated member)

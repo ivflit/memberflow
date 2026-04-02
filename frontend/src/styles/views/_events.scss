@@ -1,0 +1,63 @@
+// ── Events page ─────────────────────────────────────────────────────────────────
+.events-page {
+  min-height: 100vh;
+  background: var(--db-bg, #f5f7fa);
+  transition: background 0.2s;
+}
+
+.events-content {
+  padding-top: 5rem;
+  padding-bottom: 3rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.events-heading {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--db-text-strong, #1a202c);
+  margin-bottom: 1.5rem;
+}
+
+.events-filter-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.75rem;
+}
+
+.events-clear-link {
+  font-size: 0.875rem;
+  color: var(--bulma-primary);
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.events-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.events-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--db-text-muted, #718096);
+  font-size: 1rem;
+}
+
+.events-error {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--bulma-danger, #f14668);
+}
+
+.events-pagination {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 2rem;
+}

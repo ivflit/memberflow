@@ -11,4 +11,6 @@ urlpatterns = [
     path('api/v1/contact/', include('apps.contact.urls')),
     path('api/v1/admin/', include('apps.admin_portal.urls')),
     path('api/v1/platform/', include('apps.admin_portal.platform_urls')),
+    path('api/v1/events/', include('apps.events.urls')),
+    path('api/v1/admin/events/', include('apps.events.admin_urls')),
 ]

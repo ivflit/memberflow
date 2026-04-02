@@ -9,6 +9,7 @@
 @use 'views/platform-home';
 @use 'views/dashboard';
 @use 'views/profile';
+@use 'views/events';
 
 // ── Components: shared ────────────────────────────────────────────────────────
 @use 'components/dev-toggle';
@@ -18,6 +19,7 @@
 @use 'components/club/club-hero';
 @use 'components/club/club-navbar';
 @use 'components/club/dashboard-navbar';
+@use 'components/club/event-card';
 
 // ── Components: club dashboard cards ─────────────────────────────────────────
 @use 'components/club/dashboard/db-card';

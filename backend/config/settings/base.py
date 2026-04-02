@@ -22,6 +22,8 @@ INSTALLED_APPS = [
     'apps.users',
     'apps.contact',
     'apps.admin_portal',
+    'apps.memberships',
+    'apps.events',
 ]
 
 MIDDLEWARE = [

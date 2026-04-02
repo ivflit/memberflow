@@ -180,3 +180,74 @@
   color: var(--bulma-danger, #f14668);
   font-weight: 500;
 }
+
+// ── My Agenda ──────────────────────────────────────────────────────────────────
+.profile-agenda {
+  margin-top: 2rem;
+}
+
+.profile-agenda-title {
+  margin-bottom: 1rem;
+}
+
+.profile-agenda-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.profile-agenda-skeleton {
+  height: 48px;
+  border-radius: 8px;
+  background: var(--db-skeleton, #e2e8f0);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.profile-agenda-empty {
+  color: var(--db-text-muted, #718096);
+  font-size: 0.925rem;
+}
+
+.profile-agenda-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.profile-agenda-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--db-card-bg, #ffffff);
+  border: 1px solid var(--db-border, #e8ecf0);
+  border-radius: 8px;
+  font-size: 0.9rem;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
+
+.profile-agenda-date {
+  color: var(--db-text-muted, #718096);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 0.825rem;
+}
+
+.profile-agenda-name {
+  font-weight: 600;
+  color: var(--db-text-strong, #1a202c);
+  flex: 1;
+}
+
+.profile-agenda-venue {
+  color: var(--db-text-muted, #718096);
+  font-size: 0.825rem;
+  white-space: nowrap;
+}
