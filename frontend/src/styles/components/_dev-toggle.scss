@@ -5,6 +5,112 @@
   z-index: 9999;
 }
 
+// ── Dev Login ──────────────────────────────────────────────────────────────────
+.dev-login {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 1.25rem;
+  z-index: 9999;
+  font-family: ui-monospace, monospace;
+}
+
+.dev-login-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.dev-login-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border: 1px solid #45475a;
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  transition: background 0.15s ease, transform 0.1s ease;
+
+  &:hover {
+    background: #313244;
+    transform: translateY(-1px);
+  }
+}
+
+.dev-chevron {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.dev-login-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  background: #1e1e2e;
+  border: 1px solid #45475a;
+  border-radius: 8px;
+  padding: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.dev-login-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: #cdd6f4;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.1s;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: #313244;
+  }
+
+  &.is-active {
+    border-color: #a6e3a1;
+    color: #a6e3a1;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.is-loading-btn::after {
+    content: '…';
+    margin-left: 0.25rem;
+  }
+}
+
+.dev-logout-btn {
+  border-top: 1px solid #45475a;
+  margin-top: 0.2rem;
+  padding-top: 0.5rem;
+  color: #f38ba8;
+}
+
+.dev-role-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &.role-member { background: #89b4fa; }
+  &.role-org_staff { background: #fab387; }
+  &.role-org_admin { background: #a6e3a1; }
+}
+
 .dev-toggle-btn {
   display: flex;
   align-items: center;

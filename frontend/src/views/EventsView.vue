@@ -16,47 +16,50 @@
 
         <!-- Filter bar -->
         <div class="events-filter-bar">
-          <div class="control">
+          <div class="events-search-wrap">
+            <MagnifyingGlassIcon class="events-search-icon" />
             <input
               v-model="searchQuery"
-              class="input"
+              class="events-input events-search-input"
               type="text"
               placeholder="Search events..."
             >
           </div>
 
-          <div class="control">
-            <div class="select">
-              <select v-model="selectedCategory">
-                <option value="">
-                  All categories
-                </option>
-                <option
-                  v-for="cat in categories"
-                  :key="cat.id"
-                  :value="cat.id"
-                >
-                  {{ cat.name }}
-                </option>
-              </select>
-            </div>
+          <div class="events-select-wrap">
+            <select
+              v-model="selectedCategory"
+              class="events-select"
+            >
+              <option value="">
+                All categories
+              </option>
+              <option
+                v-for="cat in categories"
+                :key="cat.id"
+                :value="cat.id"
+              >
+                {{ cat.name }}
+              </option>
+            </select>
+            <ChevronDownIcon class="events-select-chevron" />
           </div>
 
-          <div class="control">
+          <div class="events-date-wrap">
+            <CalendarIcon class="events-date-icon" />
             <input
               v-model="dateFrom"
-              class="input"
+              class="events-input events-date-input"
               type="date"
-              placeholder="From"
             >
           </div>
 
-          <div class="control">
+          <div class="events-date-wrap">
+            <CalendarIcon class="events-date-icon" />
             <input
               v-model="dateTo"
-              class="input"
+              class="events-input events-date-input"
               type="date"
-              placeholder="To"
             >
           </div>
 
@@ -211,7 +214,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { LockClosedIcon } from '@heroicons/vue/24/outline'
+import { LockClosedIcon, MagnifyingGlassIcon, ChevronDownIcon, CalendarIcon } from '@heroicons/vue/24/outline'
 import ClubNavbar from '../components/club/ClubNavbar.vue'
 import { getEvents, getCategories } from '../api/events.js'
 import { useTheme } from '../composables/useTheme.js'
